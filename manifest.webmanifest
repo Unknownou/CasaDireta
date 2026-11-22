@@ -1,0 +1,17 @@
+{
+  "name": "CasaDireta",
+  "short_name": "CasaDireta",
+  "description": "Aluguer direto de quartos e casas, sem intermediários.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F766E",
+  "icons": [
+    {
+      "src": "assets/casadireta-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,5 +1,12 @@
 /* utils.js — constantes, formatadores e helpers puros (sem estado, sem DOM além de ícones). */
-export const PRICE = 35;
+export const PRICE = 99;
+export function operatorForPhone(phone = '') {
+  const digitsOnly = String(phone).replace(/\D/g, '');
+  const local = digitsOnly.startsWith('258') ? digitsOnly.slice(3) : digitsOnly;
+  if (/^(84|85)\d{7}$/.test(local)) return 'mpesa';
+  if (/^(86|87)\d{7}$/.test(local)) return 'emola';
+  return null;
+}
 export const DAY = 864e5;
 export const OTP_CODE = '1234';
 
@@ -14,7 +21,7 @@ export const validPhone = p => /^(82|83|84|85|86|87)\d{7}$/.test(p);
 export const fmtPhone = p => `+258 ${p.slice(0, 2)} ${p.slice(2, 5)} ${p.slice(5)}`;
 export const first = n => String(n || '').trim().split(/\s+/)[0] || '';
 export const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-export const uid = () => Math.random().toString(36).slice(2, 10);
+export const uid = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 export const fmtDate = ts => new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Africa/Maputo' });
 export const fmtTime = ts => new Date(ts).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Maputo' });
 export const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -38,7 +45,7 @@ export const PRICES = {
 };
 export const ZONES = ['Zimpeto', 'Polana Caniço', 'Maxaquene', 'Hulene', 'Coop', 'Alto Maé', 'Malhangalene', 'Matola'];
 export const HOODS = [...ZONES, 'Matola T3', 'Malhampsene', 'UEM'];
-export const ADV = ['1 mês adiantado + 1 caução', '2 meses adiantados', '1 mês adiantado', '1 mês adiantado + meio mês de caução', 'Água e energia incluídas, 1 mês adiantado'];
+export const ADV = ['1 mês adiantado + 1 caução', '2 meses adiantados', '3 meses adiantados', '1 mês adiantado', '1 mês adiantado + meio mês de caução', 'Água e energia incluídas, 1 mês adiantado'];
 export const HABITS = ['Não fuma', 'Organizado', 'Sossegado', 'Estudioso', 'Trabalha de dia', 'Sem animais'];
 export const REPORTS = { fee: 'Pede taxa de visita', rented: 'Já está alugado', fake: 'Fotos ou informação falsa', sus: 'Comportamento suspeito' };
 
@@ -78,7 +85,7 @@ export const DESCS = [
   'Espaço limpo e bem cuidado, com cozinha partilhada. O proprietário mora no mesmo quintal.',
   'Casa recém-pintada, sala e cozinha separadas. Rua com transporte regular durante todo o dia.'
 ];
-/* ── Acesso: 15 dias grátis -> bloqueio -> subscrição de 35 MT (a data final é validada pelo servidor) ── */
+/* ── Acesso: 15 dias grátis -> bloqueio -> subscrição de 99 MT (a data final é validada pelo servidor) ── */
 export const TRIAL_DAYS = 15;
 export const TERMS_VERSION = 2;
 export const accessStatus = (u, now = Date.now()) => (!u ? null : u.subscribedUntil > now ? 'SUBSCRIBED_ACTIVE' : u.trialEndsAt > now ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED');

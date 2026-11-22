@@ -49,7 +49,7 @@ const wait = (min = MOCK_LATENCY[0], max = MOCK_LATENCY[1]) => new Promise(r => 
 
 function loadDb() {
   try { const r = JSON.parse(localStorage.getItem(DBKEY)); if (r && r.users && r.listings) return r; } catch (e) { /* ignora */ }
-  return { users: [], listings: seedListings(), reports: [], otps: {}, resets: {}, payments: [], tokens: {} };
+  return { users: [], listings: seedListings(), reports: [], otps: {}, resets: {}, payments: [], tokens: {}, chats: [], notifications: [] };
 }
 let db = loadDb();
 const saveDb = () => { try { localStorage.setItem(DBKEY, JSON.stringify(db)); } catch (e) { fail('storage_full', 'Memória do telemóvel cheia. Remova fotos grandes.', 507); } };
@@ -59,7 +59,7 @@ let token = null;
 export const setMockToken = t => { token = t; };
 const authUser = () => { const u = db.users.find(x => x.id === db.tokens[token]); if (!u) fail('unauthorized', 'Sessão expirada. Entre novamente.', 401); return u; };
 const needAccess = u => {
-  if (accessStatus(u) === 'TRIAL_EXPIRED') fail('access_blocked', u.payments.length ? 'A sua subscrição terminou. Pague 35 MT para continuar.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 35 MT para continuar a usufruir do CasaDireta.', 402);
+  if (accessStatus(u) === 'TRIAL_EXPIRED') fail('access_blocked', u.payments.length ? 'A sua subscrição terminou. Pague 99 MT para continuar.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 99 MT para continuar a usufruir do CasaDireta.', 402);
 };
 const PAY_METHODS = { mpesa: { name: 'M-Pesa', pre: ['84', '85'] }, emola: { name: 'e-Mola', pre: ['86', '87'] } };
 const startTrial = u => { if (!u.trialStartedAt) { u.trialStartedAt = Date.now(); u.trialEndsAt = u.trialStartedAt + TRIAL_DAYS * DAY; } };
@@ -124,12 +124,15 @@ export const mock = {
   },
   async getCurrentUser() { await wait(80, 160); return pub(authUser()); },
 
-  /* ── Subscrição 35 MT (PaySuite simulado: pendente ~2,4 s; números terminados em 99 falham) ── */
+  /* ── Subscrição 99 MT (PaySuite simulado: pendente ~2,4 s; números terminados em 99 falham) ── */
   async createSubscription35MT({ phone, method, role }) {
     await wait();
-    const u = authUser(), m = PAY_METHODS[method];
-    if (!m) fail('invalid_method', 'Escolha M-Pesa ou e-Mola.', 422);
-    if (!validPhone(phone) || !m.pre.includes(phone.slice(0, 2))) fail('invalid_phone', `${m.name} funciona com números ${m.pre.join(' ou ')}.`, 422);
+    const u = authUser();
+    if (!validPhone(phone)) fail('invalid_phone', 'Número inválido. Use 84, 85, 86 ou 87 + 7 dígitos.', 422);
+    const detected = Object.entries(PAY_METHODS).find(([, value]) => value.pre.includes(phone.slice(0, 2)));
+    if (!detected) fail('invalid_phone', 'Não foi possível identificar a operadora pelo prefixo.', 422);
+    method = detected[0];
+    const m = detected[1];
     const p = { id: uid(), reference: 'CD' + uid().toUpperCase().slice(0, 8), userId: u.id, phone, method, role: role || u.mode, amount: SUBSCRIPTION_PRICE_MT, status: 'pending', createdAt: Date.now(), willFail: phone.endsWith('99') };
     db.payments.push(p); saveDb();
     return { paymentId: p.id, reference: p.reference, status: 'pending', amount: p.amount, method };
@@ -183,8 +186,26 @@ export const mock = {
       id: 'u' + uid(), type: d.type, rooms: d.rooms, bairro: d.bairro, ref: d.ref, price: +d.price, am: d.am || [], owner: u.name, phone: d.phone, ownerId: u.id,
       title: `${TITLE[d.type]} · ${d.bairro}`, adv: d.adv, desc: d.desc, rules: RULES[0], ext: d.ext, int: d.int, rented: false, verified: true, views: 0, wa: 0, created: Date.now()
     };
-    db.listings.unshift(l); saveDb();
+    db.listings.unshift(l);
+    db.users.filter(x => x.id !== u.id && x.verified && x.mode === 'inquilino').forEach(target => {
+      const sameZone = target.zone && norm(target.zone) === norm(l.bairro);
+      if (sameZone || !target.zone) db.notifications.push({ id: 'n' + uid(), userId: target.id, type: sameZone ? 'nearby_property' : 'new_property', title: sameZone ? 'Nova casa perto de si' : 'Nova casa publicada', body: `${l.title} em ${l.bairro}`, propertyId: l.id, read: false, created: Date.now() });
+    });
+    saveDb();
     return clone(l);
+  },
+  async listNotifications({ unread } = {}) {
+    await wait(60, 140);
+    const u = authUser();
+    return clone(db.notifications.filter(n => n.userId === u.id && (!unread || !n.read)).sort((a, b) => b.created - a.created).slice(0, 50));
+  },
+  async markNotificationsRead({ ids = [] } = {}) {
+    await wait(40, 100);
+    const u = authUser();
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    db.notifications.forEach(n => { if (n.userId === u.id && wanted.has(n.id)) n.read = true; });
+    saveDb();
+    return { updated: wanted.size };
   },
   async updateProperty(id, patch) {
     await wait(120, 260);
@@ -204,6 +225,21 @@ export const mock = {
     const u = authUser();
     db.reports.push({ id: uid(), propertyId, reason, by: u.id, date: Date.now() }); saveDb();
     return { ok: true };
+  },
+
+  /* ── Conversas (contrato compatível com o backend real) ── */
+  async listChatMessages({ conversationId }) {
+    await wait(80, 180);
+    const u = authUser();
+    return clone(db.chats.filter(x => x.conversationId === conversationId && (x.fromUserId === u.id || x.toUserId === u.id)).sort((a, b) => a.created - b.created));
+  },
+  async sendChatMessage({ conversationId, toUserId, text, context = {} }) {
+    await wait(120, 260);
+    const u = authUser();
+    if (!toUserId || !text || text.trim().length < 1) fail('invalid_message', 'Escreva uma mensagem.', 422);
+    const row = { id: 'm' + uid(), conversationId, fromUserId: u.id, toUserId, text: text.trim().slice(0, 1000), context, created: Date.now(), readAt: 0 };
+    db.chats.push(row); saveDb();
+    return clone(row);
   },
 
   /* ── Perfil e conta ── */

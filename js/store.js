@@ -20,6 +20,7 @@ export const store = {
   token: null,         // só existe depois do OTP confirmado
   pendingOtp: null,    // { purpose, phone, userId, sentAt, resendIn, verified, busy, resetToken, from }
   properties: [],      // cache de imóveis (detalhe, favoritos, minhas casas)
+  notifications: [],   // avisos de casas novas/perto e mensagens
   local: freshLocal()  // dados só do cliente: favoritos, contactos, interesses, procuras de colega
 };
 
@@ -64,7 +65,7 @@ export function endSession() {
 }
 async function enterMain() {
   await refreshSubscription();
-  if (hasAccess()) await refreshProperties();
+  if (hasAccess()) { await refreshProperties(); await refreshNotifications(); }
 }
 export async function refreshSubscription() {
   if (!store.user) return;
@@ -79,6 +80,12 @@ export async function refreshUser() {
 export async function refreshProperties() {
   const r = await api.listProperties({ includeRented: true });
   if (r.ok) store.properties = r.data;
+  emit();
+}
+export async function refreshNotifications() {
+  if (!store.user) return;
+  const r = await api.listNotifications({ unread: true });
+  if (r.ok) store.notifications = r.data || [];
   emit();
 }
 export function setUser(u) { store.user = { ...store.user, ...u }; emit(); }

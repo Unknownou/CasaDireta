@@ -2,7 +2,7 @@
 
 Aluguer direto de quartos e casas em Maputo e Matola, **sem intermediários e sem taxas de visita**.
 Frontend mobile-first (HTML + Tailwind CDN + JavaScript ES modules), pronto para ligar a um backend real,
-ao **MozSMS** (OTP) e ao **PaySuite** (35 MT via M-Pesa / e-Mola).
+ao **MozSMS** (OTP) e ao **PaySuite** (99 MT via M-Pesa / e-Mola).
 
 ## Como correr
 1. Abra a pasta no VS Code e instale a extensão **Live Server**.
@@ -12,10 +12,9 @@ ao **MozSMS** (OTP) e ao **PaySuite** (35 MT via M-Pesa / e-Mola).
 Sem Live Server: `python -m http.server 5500` e abrir `http://localhost:5500`.
 
 ## Fluxo de acesso
-`AUTH → OTP → 15 dias grátis (APP_MAIN) → bloqueio (SUBSCRIPTION_PAYWALL) → pagamento de 35 MT → APP_MAIN`
+`AUTH → OTP → 15 dias grátis (APP_MAIN) → bloqueio (SUBSCRIPTION_PAYWALL) → pagamento de 99 MT → APP_MAIN`
 
-- OTP de teste: `1234`. Números terminados em `99` simulam falha de pagamento.
-- No Perfil (apenas em `MOCK_MODE`): botões para simular o fim dos 15 dias e repô-los.
+- O frontend local continua com um adaptador mock interno até o backend central ser ligado; não exibe códigos ou controles de teste na interface.
 
 ## Estrutura
 ```
@@ -34,4 +33,15 @@ js/
 `js/config.js`: `MOCK_MODE = false` e `API_BASE_URL` do servidor. A validação das datas
 (`trialEndsAt`, `subscribedUntil`) deve ser feita pelo servidor; o webhook do PaySuite chega ao backend.
 
+Na subscrição, a operadora é detetada automaticamente pelo prefixo: `84/85` = M-Pesa e `86/87` = e-Mola.
+O backend deve repetir esta validação e não confiar numa operadora enviada pelo cliente.
+
 > Demonstração: senhas em `localStorage` e textos legais ilustrativos. Não usar em produção sem backend seguro e revisão jurídica.
+
+## Conversas, notificações e TUPC
+
+O frontend expõe o contrato para `GET/POST /conversations/:id/messages` e para o registo de tokens em
+`POST /notifications/push-token`. A ponte opcional `js/tupc.js` prepara a sincronização de identidade.
+Para produção ainda é necessário um backend que persista mensagens, entregue eventos em tempo real e envie
+Web Push/FCM. Notificações com o ecrã desligado exigem HTTPS, VAPID/FCM e integração nativa. O endpoint TUPC
+deve ser fornecido pela equipa responsável e permanece desativado por defeito.

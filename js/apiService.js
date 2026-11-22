@@ -15,8 +15,8 @@
  *                                         (no 1.º OTP validado o servidor define trialStartedAt = agora e trialEndsAt = +15 dias)
  *   POST   /auth/reset-password         { phone, resetToken, newPassword }
  *   GET    /auth/me                                                                   -> user
- *   POST   /subscriptions/35mt          { phone, method:'mpesa'|'emola', role }       -> { paymentId, reference, status:'pending' }  (PaySuite)
- *   GET    /subscriptions/payments/:id                                                -> { status:'pending'|'paid'|'failed', ... }
+ *   POST   /functions/v1/paysuite-webhook?action=create-subscription                  -> { paymentId, status } (Central/TUPC)
+ *   GET    /functions/v1/paysuite-webhook?action=subscription-status&id=:id             -> { status:'pending'|'processing'|'active'|'failed', ... }
  *   GET    /subscriptions/status?userId=                                              -> { trialStartedAt, trialEndsAt, subscribedUntil, subscriptionStatus, payments }
  *   GET    /properties?q&zone&type&priceMin&priceMax&amenities&sort&includeRented     -> Property[]   (402 access_blocked se o acesso terminou)
  *   POST   /properties                  multipart: campos + photos_exterior[] + photos_interior[]
@@ -26,25 +26,28 @@
  *   PATCH  /users/me                    { name, zone, job, age, habits, photo, mode }
  *   POST   /users/me/password           { currentPassword, newPassword }
  *   DELETE /users/me                    { password }
+ *   GET    /conversations/:id/messages
+ *   POST   /conversations/:id/messages  { toUserId, text, context }
+ *   POST   /notifications/push-token    { token, platform, userAgent, appCode }
  *
  * O webhook do PaySuite chega ao BACKEND (nunca ao frontend); o frontend só consulta
  * GET /subscriptions/payments/:id até o estado deixar de ser 'pending'.
  */
-import { API_BASE_URL, MOCK_MODE, REQUEST_TIMEOUT_MS } from './config.js';
+import { API_BASE_URL, PAYMENT_API_BASE_URL, MOCK_MODE, REQUEST_TIMEOUT_MS, APP_CODE, SUBSCRIPTION_PLAN_ID } from './config.js';
 import { mock, setMockToken, devTools } from './mockBackend.js';
 import { PRICES } from './utils.js';
 
 let authToken = null;
 export function setAuthToken(t) { authToken = t; setMockToken(t); }
 
-async function request(method, path, { body, form, query } = {}) {
-  const url = new URL(API_BASE_URL.replace(/\/$/, '') + path);
+async function request(method, path, { body, form, query, headers = {}, baseUrl = API_BASE_URL } = {}) {
+  const url = new URL(baseUrl.replace(/\/$/, '') + path);
   if (query) for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, Array.isArray(v) ? v.join(',') : v);
   const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       method, signal: ctrl.signal,
-      headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
       body: form || (body ? JSON.stringify(body) : undefined)
     });
     let json = null; try { json = await res.json(); } catch (e) { /* sem corpo */ }
@@ -57,9 +60,15 @@ async function request(method, path, { body, form, query } = {}) {
   } finally { clearTimeout(timer); }
 }
 
-async function call(mockFn, realFn) {
+async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL) {
   try {
     if (!navigator.onLine) throw Object.assign(new Error('Sem internet. Verifique os dados móveis.'), { code: 'network' });
+    if (!MOCK_MODE) {
+      const target = new URL(validationBaseUrl);
+      if (target.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1'].includes(target.hostname)) {
+        throw Object.assign(new Error('Configuração de produção inválida: a API Central precisa de HTTPS.'), { code: 'production_config' });
+      }
+    }
     return { ok: true, data: MOCK_MODE ? await mockFn() : await realFn() };
   } catch (e) {
     return { ok: false, error: { code: e.code || 'unknown', message: e.message || 'Ocorreu um erro. Tente novamente.', status: e.status || 0 } };
@@ -93,9 +102,17 @@ export const verifyOtp = (phone, code, purpose = 'login') => call(() => mock.ver
 export const resetPassword = p => call(() => mock.resetPassword(p), () => request('POST', '/auth/reset-password', { body: p }));
 export const getCurrentUser = () => call(() => mock.getCurrentUser(), () => request('GET', '/auth/me'));
 
-/* ── Subscrição de 35 MT (PaySuite) ── */
-export const createSubscription35MT = ({ phone, method, role }) => call(() => mock.createSubscription35MT({ phone, method, role }), () => request('POST', '/subscriptions/35mt', { body: { phone, method, role, amount: 35 } }));
-export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/subscriptions/payments/${id}`));
+/* ── Subscrição: preço e operadora são resolvidos no backend Central/TUPC ── */
+export const createSubscription = ({ phone, role, idempotencyKey }) => call(
+  () => mock.createSubscription35MT({ phone, role }),
+  () => request('POST', '/paysuite-webhook?action=create-subscription', {
+    baseUrl: PAYMENT_API_BASE_URL,
+    body: { phone, role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
+    headers: { 'Idempotency-Key': idempotencyKey || crypto.randomUUID() }
+  }), PAYMENT_API_BASE_URL
+);
+export const createSubscription35MT = createSubscription;
+export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/paysuite-webhook?action=subscription-status&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL);
 export const getSubscriptionStatus = userId => call(() => mock.getSubscriptionStatus(userId), () => request('GET', '/subscriptions/status', { query: { userId } }));
 
 /* ── Imóveis ── */
@@ -104,6 +121,11 @@ export const createProperty = data => call(() => mock.createProperty(data), asyn
 export const updateProperty = (id, patch) => call(() => mock.updateProperty(id, patch), () => request('PATCH', `/properties/${id}`, { body: patch }));
 export const trackProperty = (id, event) => call(() => mock.trackProperty(id, event), () => request('POST', `/properties/${id}/events`, { body: { event } }));
 export const reportProperty = p => call(() => mock.reportProperty(p), () => request('POST', '/reports', { body: p }));
+export const listChatMessages = conversationId => call(() => mock.listChatMessages({ conversationId }), () => request('GET', `/conversations/${encodeURIComponent(conversationId)}/messages`));
+export const sendChatMessage = (conversationId, data) => call(() => mock.sendChatMessage({ conversationId, ...data }), () => request('POST', `/conversations/${encodeURIComponent(conversationId)}/messages`, { body: data }));
+export const registerPushToken = data => call(() => ({ registered: false, mode: 'mock' }), () => request('POST', '/notifications/push-token', { body: { ...data, appCode: APP_CODE } }));
+export const listNotifications = (q = {}) => { const query = toQuery({ ...q, appCode: APP_CODE }); return call(() => mock.listNotifications(query), () => request('GET', '/notifications', { query })); };
+export const markNotificationsRead = ids => call(() => mock.markNotificationsRead({ ids }), () => request('POST', '/notifications/read', { body: { ids, appCode: APP_CODE } }));
 
 /* ── Perfil e conta ── */
 export const updateUserProfile = d => call(() => mock.updateUserProfile(d), () => request('PATCH', '/users/me', { body: d }));

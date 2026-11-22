@@ -1,9 +1,11 @@
 /* app.js — camada de UI do CasaDireta (módulo ES).
    Dados: apiService.js · Estado e máquina de estados: store.js · Configuração: config.js */
-import { store, init, currentScreen, persist, startSession, endSession, refreshSubscription, refreshProperties, refreshUser, setUser, forgetLocalUser, resetAll } from './store.js';
+import { store, init, currentScreen, persist, startSession, endSession, refreshSubscription, refreshProperties, refreshNotifications, refreshUser, setUser, forgetLocalUser, resetAll } from './store.js';
 import * as api from './apiService.js';
-import { MOCK_MODE, MOCK_OTP_CODE, OTP_RESEND_SECONDS } from './config.js';
-import { $, $$, esc, norm, num, mt, digits, validPhone, fmtPhone, first, initials, uid, fmtDate, fmtTime, roomsTxt, TYPES, AM, PRICES, ZONES, HOODS, ADV, HABITS, REPORTS, ic, icons, scene, photosOf, coverOf, photoCount, PRICE, DAY, TRIAL_DAYS, TERMS_VERSION, accessStatus, subscribed, daysLeft, homeOf } from './utils.js';
+import { enablePushNotifications } from './notificationService.js';
+import { syncIdentity } from './tupc.js';
+import { OTP_RESEND_SECONDS } from './config.js';
+import { $, $$, esc, norm, num, mt, digits, validPhone, fmtPhone, first, initials, uid, fmtDate, fmtTime, roomsTxt, TYPES, AM, PRICES, ZONES, HOODS, ADV, HABITS, REPORTS, ic, icons, scene, photosOf, coverOf, photoCount, PRICE, DAY, TRIAL_DAYS, TERMS_VERSION, accessStatus, subscribed, daysLeft, homeOf, operatorForPhone } from './utils.js';
 
 const L = new Proxy({}, { get: (_, k) => store.local[k] });   // dados locais do cliente (favoritos, contactos...)
 const me = () => store.user;
@@ -70,7 +72,8 @@ function renderChrome(r, u) {
     ? [['owner', 'layout-list', 'Minhas Casas'], ['publish', 'circle-plus', 'Publicar'], ['profile', 'user', 'Perfil']]
     : [['home', 'home', 'Início'], ['roommates', 'users', 'Dividir'], ['favorites', 'heart', 'Favoritos'], ['profile', 'user', 'Perfil']];
   const fab = r === 'owner' ? `<button data-act="add" class="absolute right-4 bottom-24 z-30 h-14 px-5 rounded-full bg-brand text-white font-bold shadow-xl flex items-center gap-2 active:scale-95">${ic('plus', 'w-5 h-5')} Nova casa</button>` : '';
-  chrome.innerHTML = `${fab}<nav class="bg-white border-t border-slate-200 flex pb-[env(safe-area-inset-bottom)]" aria-label="Navegação principal">${items.map(([to, i, l]) => `
+  const unread = store.notifications?.length || 0;
+  chrome.innerHTML = `${fab}${unread ? `<button data-act="notifications" class="fixed right-4 top-4 z-30 w-11 h-11 rounded-full bg-white shadow border border-slate-100 text-brand" aria-label="${unread} notificações novas">${ic('bell', 'w-5 h-5 mx-auto')}<span class="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] grid place-items-center">${unread > 9 ? '9+' : unread}</span></button>` : ''}<nav class="bg-white border-t border-slate-200 flex pb-[env(safe-area-inset-bottom)]" aria-label="Navegação principal">${items.map(([to, i, l]) => `
     <button data-act="go" data-to="${to}" class="flex-1 py-2.5 flex flex-col items-center gap-0.5 text-[11px] font-semibold ${to === r ? 'text-brand' : 'text-slate-500'}" ${to === r ? 'aria-current="page"' : ''}>${ic(i, 'w-6 h-6')}${l}</button>`).join('')}</nav>`;
 }
 
@@ -94,6 +97,11 @@ const avatar = (u, cls = 'w-20 h-20 text-2xl', ring = 'bg-white text-brand') => 
 function toast(msg) {
   toastEl.innerHTML = `<div class="t">${esc(msg)}</div>`;
   clearTimeout(toast.t); toast.t = setTimeout(() => (toastEl.innerHTML = ''), 2800);
+}
+function showNotifications() {
+  const items = store.notifications || [];
+  openSheet('Notificações', items.length ? `<div class="space-y-3">${items.map(n => `<article class="rounded-xl bg-emerald-50 p-3"><p class="font-bold text-sm">${esc(n.title)}</p><p class="text-xs text-slate-600 mt-1">${esc(n.body)}</p><p class="text-[11px] text-slate-400 mt-2">${fmtDate(n.created)}</p></article>`).join('')}</div>` : '<p class="text-sm text-slate-500 py-8 text-center">Ainda não há notificações.</p>');
+  if (items.length) api.markNotificationsRead(items.map(n => n.id)).then(() => { store.notifications = []; renderChrome(parse().r, me()); });
 }
 function openSheet(title, body) {
   sheet.innerHTML = `<div class="absolute inset-0 z-40 flex items-end bg-ink/50 fade-in" data-act="backdrop"><div role="dialog" aria-modal="true" aria-label="${esc(title)}" class="sheet-in w-full max-h-[90%] overflow-y-auto bg-white rounded-t-3xl p-5 pb-7">
@@ -136,7 +144,7 @@ function vWelcome() {
       <p class="mt-2 text-lg font-semibold text-emerald-100">Zero intermediários.</p>
       <ul class="mt-8 space-y-3 text-[15px]">
         <li class="flex gap-3 items-center">${ic('phone', 'w-5 h-5 text-amber-400')} Fale direto no WhatsApp do dono</li>
-        <li class="flex gap-3 items-center">${ic('banknote', 'w-5 h-5 text-amber-400')} 15 dias grátis. Depois, 35 MT por 30 dias</li>
+        <li class="flex gap-3 items-center">${ic('banknote', 'w-5 h-5 text-amber-400')} 15 dias grátis. Depois, 99 MT por 30 dias</li>
         <li class="flex gap-3 items-center">${ic('users', 'w-5 h-5 text-amber-400')} Encontre colegas para dividir a renda</li>
       </ul>
     </div>
@@ -224,7 +232,6 @@ function vOtp() {
     <p id="e-otp" class="text-sm text-red-600 font-semibold min-h-[1.25rem]" role="alert"></p>
     <div class="mt-2">${primaryBtn('Confirmar Código', 'otp-confirm')}</div>
     <button id="resend" data-act="resend" class="mt-4 text-sm font-bold text-slate-400" disabled>Reenviar código em ${o.resendIn}s</button>
-    ${MOCK_MODE ? `<p class="mt-5 text-[11px] text-slate-400">Código de teste: ${MOCK_OTP_CODE}</p>` : ''}
   </div>`;
 }
 function setOtpBusy(on) {
@@ -248,18 +255,20 @@ async function verifyOtp(code) {
   if (o.purpose === 'reset') { o.verified = true; o.resetToken = r.data.resetToken; nav('reset'); return; }
   o.verified = true;
   await startSession(r.data.user, r.data.token);
+  syncIdentity({ user: r.data.user }).catch(() => {});
   toast('Número verificado');
   nav(homeOf(me()));      // o guard encaminha para o bloqueio se o período grátis já terminou
 }
 
-/* ───────────── Fim do período grátis / subscrição de 35 MT (PaySuite · M-Pesa / e-Mola) ───────────── */
+/* ───────────── Fim do período grátis / subscrição de 99 MT (PaySuite · M-Pesa / e-Mola) ───────────── */
 const METHODS = { mpesa: { name: 'M-Pesa', op: 'Vodacom', pre: ['84', '85'], c: 'bg-red-50 text-red-600' }, emola: { name: 'e-Mola', op: 'Movitel', pre: ['86', '87'], c: 'bg-orange-50 text-orange-600' } };
+const methodForPhone = phone => operatorForPhone(phone);
 const redraw = () => { view.innerHTML = vPay(); icons(); };
 
 function vPay() {
   const u = me();
   const locked = currentScreen() === 'SUBSCRIPTION_PAYWALL';
-  if (!ui.pay) ui.pay = { method: 'mpesa', phone: u.phone, status: 'idle', token: null, error: '' };
+  if (!ui.pay) ui.pay = { method: methodForPhone(u.phone) || 'mpesa', phone: u.phone, status: 'idle', token: null, error: '' };
   const p = ui.pay, m = METHODS[p.method];
   if (p.status === 'processing') {
     return `<div class="p-6 text-center">
@@ -282,10 +291,10 @@ function vPay() {
   }
   const paid = u.payments.length > 0;
   const lead = locked
-    ? (paid ? 'A sua subscrição terminou. Pague 35 MT para continuar a usufruir do CasaDireta.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 35 MT para continuar a usufruir do CasaDireta.')
-    : 'Pague 35 MT e ganhe mais 30 dias de acesso completo ao CasaDireta.';
+    ? (paid ? 'A sua subscrição terminou. Pague 99 MT para continuar a usufruir do CasaDireta.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 99 MT para continuar a usufruir do CasaDireta.')
+    : 'Pague 99 MT e ganhe mais 30 dias de acesso completo ao CasaDireta.';
   const perks = ['Feed de casas, detalhes e contacto direto com proprietários', 'Publicar anúncios com fotos do exterior e do interior', 'Sem taxas de visita nem intermediários'];
-  return `${locked ? `<div class="h-4"></div>` : top('Subscrição de 35 MT')}
+  return `${locked ? `<div class="h-4"></div>` : top('Subscrição de 99 MT')}
   <div class="p-5 ${locked ? 'pt-3' : ''}">
     <div class="rounded-3xl bg-gradient-to-br from-brand to-ink text-white p-5">
       <p class="text-[11px] font-bold tracking-wider text-amber-400 uppercase">${locked ? (paid ? 'Subscrição terminada' : 'Fim do período grátis') : 'Subscrição CasaDireta'}</p>
@@ -294,26 +303,27 @@ function vPay() {
       <ul class="mt-4 space-y-2 text-sm">${perks.map(x => `<li class="flex gap-2 items-start">${ic('circle-check', 'w-5 h-5 text-amber-400 shrink-0')}<span>${x}</span></li>`).join('')}</ul>
     </div>
     <h2 class="mt-6 font-extrabold">Carteira móvel</h2>
-    <div class="mt-2 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Carteira móvel">${Object.entries(METHODS).map(([k, v]) => `
-      <button data-act="method" data-v="${k}" role="radio" aria-checked="${p.method === k}" class="p-3.5 rounded-xl border-2 text-left ${p.method === k ? 'border-brand bg-emerald-50' : 'border-slate-200 bg-white'}">
-        <span class="w-10 h-10 rounded-full grid place-items-center ${v.c}">${ic('smartphone')}</span><b class="block mt-2">${v.name}</b><span class="text-xs text-slate-500">${v.op} · ${v.pre.join('/')}</span></button>`).join('')}</div>
-    <label class="block mt-4 text-sm font-bold" for="payPhone">Número ${m.name}</label>
+    <div class="mt-2 rounded-xl border-2 border-brand bg-emerald-50 p-3.5 flex items-center gap-3" aria-live="polite">
+      <span class="w-10 h-10 rounded-full grid place-items-center ${m.c}">${ic('smartphone')}</span><div><b id="payOperatorName" class="block">${m.name}</b><span id="payOperatorHint" class="text-xs text-slate-600">${m.op} · detetada automaticamente pelo prefixo ${m.pre.join(' / ')}</span></div></div>
+    <label class="block mt-4 text-sm font-bold" for="payPhone">Número de telemóvel</label>
     <div class="mt-1.5">${phoneField('payPhone', p.phone)}</div>${err('payPhone')}
     <div class="mt-3">${primaryBtn(`Pagar ${PRICE} MT${locked ? ' e Continuar' : ' Agora'}`, 'pay')}</div>
-    <p class="mt-3 text-[11px] text-center text-slate-500">${MOCK_MODE ? 'Pagamento simulado (teste: números terminados em 99 simulam falha). Não é cobrado dinheiro real.' : 'O pagamento é processado pelo PaySuite.'}</p>
+    <p class="mt-3 text-[11px] text-center text-slate-500">O pagamento é processado de forma segura pela operadora detetada e pelo PaySuite.</p>
     ${locked ? `<div class="mt-5 text-center"><button data-act="logout" class="text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button></div>` : ''}
   </div>`;
 }
 async function startPay() {
-  const p = ui.pay, m = METHODS[p.method];
+  const p = ui.pay;
   const ph = digits($('#payPhone').value);
   clearErrs();
   if (!validPhone(ph)) return setErr('payPhone', 'Número inválido (82–87 + 7 dígitos).');
-  if (!m.pre.includes(ph.slice(0, 2))) return setErr('payPhone', `${m.name} funciona com números ${m.op} (${m.pre.join(' ou ')}).`);
+  const detected = methodForPhone(ph);
+  if (!detected) return setErr('payPhone', 'Não foi possível identificar a operadora. Use um número 84, 85, 86 ou 87.');
+  p.method = detected;
   if (p.status === 'processing') return;
   p.phone = ph; p.status = 'processing'; p.token = uid(); p.error = '';
   const tk = p.token; redraw();
-  const r = await api.createSubscription35MT({ phone: ph, method: p.method, role: me().mode });
+  const r = await api.createSubscription({ phone: ph, role: me().mode, idempotencyKey: tk });
   if (!ui.pay || ui.pay.token !== tk) return;
   if (!r.ok) return payFailed(tk, r.error.message);
   p.paymentId = r.data.paymentId;
@@ -524,14 +534,19 @@ function postForm(pre = {}) {
       <datalist id="hoods-list">${HOODS.map(h => `<option value="${h}">`).join('')}</datalist>
     </div>`);
 }
-function chatSheet(r) {
+async function chatSheet(r) {
   const u = me();
   L.interests[u.id] = [...new Set([...(L.interests[u.id] || []), r.id])]; save();
+  const conversationId = [u.id, r.userId || r.id].sort().join(':');
+  const existing = await api.listChatMessages(conversationId);
+  const messages = existing.ok ? existing.data : [];
   openSheet(`Conversa com ${esc(first(r.name))}`, `
     <div id="chat" class="space-y-2 min-h-[120px] max-h-[40vh] overflow-y-auto" aria-live="polite">
-      <div class="max-w-[85%] bg-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm">Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div></div>
+      ${messages.length ? messages.map(m => `<div class="${m.fromUserId === u.id ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm">${esc(m.text)}</div>`).join('') : `<div class="max-w-[85%] bg-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm">Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
     <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" value="Olá ${esc(first(r.name))}, tenho interesse em dividir. Podemos falar?" aria-label="Mensagem"><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
-    <p class="mt-2 text-[11px] text-slate-500">Conversa simulada para demonstração.</p>`);
+    <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
+  const send = document.querySelector('[data-act="chat-send"]');
+  if (send) send.dataset.conversationId = conversationId;
 }
 
 /* ───────────── Favoritos ───────────── */
@@ -558,7 +573,7 @@ function vProfile() {
   const row = (icon, label, val, act = '', extra = '') => `<button ${act ? `data-act="${act}" ${extra}` : 'disabled'} class="w-full flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 text-left"><span class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 grid place-items-center shrink-0">${ic(icon, 'w-4.5 h-4.5')}</span><span class="flex-1 text-sm font-semibold">${label}</span>${val ? `<span class="text-xs text-slate-500 font-semibold">${val}</span>` : ''}${act ? ic('chevron-right', 'w-4 h-4 text-slate-400') : ''}</button>`;
   const accessLine = s === 'SUBSCRIBED_ACTIVE'
     ? `<b class="text-sm text-brand">Subscrição ativa — ${daysLeft(u.subscribedUntil)} dias restantes</b><p class="text-xs text-slate-500 mt-0.5">Válida até ${fmtDate(u.subscribedUntil)}</p>`
-    : `<b class="text-sm text-brand">Período grátis: ${daysLeft(u.trialEndsAt)} dias restantes</b><p class="text-xs text-slate-500 mt-0.5">Termina a ${fmtDate(u.trialEndsAt)}. Depois, 35 MT por 30 dias.</p>`;
+    : `<b class="text-sm text-brand">Período grátis: ${daysLeft(u.trialEndsAt)} dias restantes</b><p class="text-xs text-slate-500 mt-0.5">Termina a ${fmtDate(u.trialEndsAt)}. Depois, 99 MT por 30 dias.</p>`;
   return `<div class="bg-gradient-to-b from-brand to-brand-dark text-white px-5 pt-8 pb-6 rounded-b-3xl text-center">
       <div class="relative inline-block">${avatar(u)}
         <label class="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-amber-500 text-ink grid place-items-center cursor-pointer shadow" aria-label="Alterar foto de perfil">${ic('camera', 'w-4.5 h-4.5')}<input id="avatarIn" type="file" accept="image/*" class="sr-only"></label></div>
@@ -577,20 +592,18 @@ function vProfile() {
         ${prop ? '' : row('user', 'Perfil para dividir renda', u.age || u.job ? esc(`${u.age ? u.age + ' anos' : ''}${u.age && u.job ? ' · ' : ''}${u.job || ''}`) : 'Opcional')}
         ${row('pencil', 'Editar perfil', '', 'edit-profile')}</section>
       <section class="bg-white rounded-2xl border border-slate-100 px-4 py-1"><h2 class="font-extrabold pt-3 pb-1">Definições e segurança</h2>
-        ${row('camera', 'Alterar foto de perfil', '', 'pick-avatar')}${row('lock', 'Trocar senha', '', 'chpw')}${row('file-text', 'Termos e Condições / Privacidade', '', 'terms')}${row('repeat', `Alternar para Modo ${prop ? 'Inquilino' : 'Proprietário'}`, '', 'switch-mode')}${row('log-out', 'Sair', '', 'logout')}</section>
+        ${row('camera', 'Alterar foto de perfil', '', 'pick-avatar')}${row('bell', 'Ativar notificações', '', 'enable-push')}${row('lock', 'Trocar senha', '', 'chpw')}${row('file-text', 'Termos e Condições / Privacidade', '', 'terms')}${row('repeat', `Alternar para Modo ${prop ? 'Inquilino' : 'Proprietário'}`, '', 'switch-mode')}${row('log-out', 'Sair', '', 'logout')}</section>
       <section class="bg-white rounded-2xl border border-slate-100 p-4"><h2 class="font-extrabold mb-1">Histórico de pagamentos</h2>
         ${u.payments.length ? u.payments.map(p => `<div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-sm"><div><b class="block">Subscrição CasaDireta (30 dias)</b><span class="text-xs text-slate-500">${fmtDate(p.date)}, ${fmtTime(p.date)} · ${p.method} · ${p.ref}</span></div><b>${mt(p.amount)}</b></div>`).join('') : '<p class="text-sm text-slate-500 py-2">Ainda sem pagamentos. Está no período grátis.</p>'}</section>
       <button data-act="del-account" class="w-full py-3.5 rounded-xl border-2 border-red-200 text-red-600 font-bold flex items-center justify-center gap-2">${ic('trash-2', 'w-5 h-5')} Eliminar conta</button>
-      ${MOCK_MODE ? `<section class="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4"><h2 class="font-extrabold text-amber-900 text-sm">Modo de teste (apenas desenvolvimento)</h2>
-        <div class="mt-2 grid gap-2"><button data-act="dev-expire-trial" class="py-2.5 rounded-lg bg-amber-500 text-ink text-sm font-bold">Simular Fim dos 15 Dias Grátis</button><button data-act="dev-reset-trial" class="py-2.5 rounded-lg bg-white border border-amber-400 text-amber-900 text-sm font-bold">Resetar 15 Dias Grátis</button><button data-act="demo-reset" class="text-xs font-semibold text-amber-800 underline pt-1">Repor toda a demonstração</button></div></section>` : ''}
     </div>`;
 }
 const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-relaxed">
-  <section><h3 class="font-extrabold text-ink">1. 15 dias grátis e subscrição de 35 MT</h3>
+  <section><h3 class="font-extrabold text-ink">1. 15 dias grátis e subscrição de 99 MT</h3>
     <p>Quando valida o seu número por SMS pela primeira vez, a conta ganha <b>15 dias grátis</b>, com acesso completo, tanto para <b>inquilinos</b> como para <b>proprietários</b>.</p>
-    <p class="mt-1.5">Terminados os 15 dias, o acesso é <b>bloqueado automaticamente</b> até pagar a subscrição de <b>35 MT</b>, que dá <b>30 dias</b> de acesso completo. Não há renovação automática: só paga quando confirmar o pagamento no seu telemóvel.</p>
+    <p class="mt-1.5">Terminados os 15 dias, o acesso é <b>bloqueado automaticamente</b> até pagar a subscrição de <b>99 MT</b>, que dá <b>30 dias</b> de acesso completo. Não há renovação automática: só paga quando confirmar o pagamento no seu telemóvel.</p>
     <ul class="mt-1.5 list-disc pl-5 space-y-1"><li><b>Inquilino:</b> ver o feed de casas, os detalhes e fotos, contactar o proprietário por WhatsApp ou chamada e usar o espaço de divisão de renda.</li><li><b>Proprietário:</b> publicar anúncios com fotos do exterior e do interior, gerir “Disponível / Já Alugado” e receber contactos diretos.</li></ul>
-    <p class="mt-1.5">Existe uma subscrição por conta e vale para os dois modos. Os 35 MT pagam o acesso à plataforma: não são comissão, não garantem o arrendamento e não são reembolsáveis, salvo falha técnica comprovada.</p></section>
+    <p class="mt-1.5">Existe uma subscrição por conta e vale para os dois modos. Os 99 MT pagam o acesso à plataforma: não são comissão, não garantem o arrendamento e não são reembolsáveis, salvo falha técnica comprovada.</p></section>
   <section><h3 class="font-extrabold text-ink">2. Pagamentos (M-Pesa e e-Mola)</h3><p>Os pagamentos são feitos por M-Pesa (Vodacom) ou e-Mola (Movitel) através do parceiro de pagamentos PaySuite. A CasaDireta nunca vê nem guarda o seu PIN. Guardamos apenas a referência, o valor, a data e o número usado.</p></section>
   <section><h3 class="font-extrabold text-ink">3. Zero taxa de visita e anúncios verdadeiros</h3><p>É proibido cobrar taxa de visita, de reserva ou de “contacto”. É proibido publicar anúncios falsos, fotos de outros imóveis ou casas já alugadas. Os anúncios denunciados são revistos e as contas podem ser suspensas.</p></section>
   <section><h3 class="font-extrabold text-ink">4. Como usamos os seus dados</h3><p>Usamos o nome, o telemóvel, a foto, as preferências e os anúncios apenas para o funcionamento da CasaDireta: verificar a conta, mostrar o seu perfil e anúncios e permitir contacto direto entre inquilinos e proprietários.</p>
@@ -627,7 +640,7 @@ function vPublish() {
   const pickChip = (group, val, label, on) => `<button type="button" data-act="pick" data-group="${group}" data-val="${val}" class="chip" aria-pressed="${on}">${label}</button>`;
   const photoBlock = (kind, label) => `<div><div class="flex items-center justify-between"><span class="text-sm font-bold">${label}</span><span class="text-xs text-slate-500" id="pcount-${kind}">${w[kind].length}/5</span></div>
       <div id="grid-${kind}" class="mt-2 grid grid-cols-3 gap-2"></div>
-      <div class="mt-2 flex gap-2"><label class="flex-1 text-center py-2.5 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer">${ic('image-plus', 'w-4 h-4 inline -mt-0.5')} Adicionar fotos<input type="file" accept="image/*" multiple data-kind="${kind}" class="photo-in sr-only"></label><button type="button" data-act="photo-demo" data-kind="${kind}" class="px-3 rounded-xl bg-slate-100 text-xs font-bold text-slate-700">Foto de exemplo</button></div>${err('ph-' + kind)}</div>`;
+      <div class="mt-2"><label class="block text-center py-2.5 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer">${ic('image-plus', 'w-4 h-4 inline -mt-0.5')} Adicionar fotos<input type="file" accept="image/*" multiple data-kind="${kind}" class="photo-in sr-only"></label>${err('ph-' + kind)}</div>`;
   ui.mount = () => { drawPhotos('ext'); drawPhotos('int'); };
   return `${top('Publicar Nova Casa', true)}
   <div class="p-5 space-y-5">
@@ -655,8 +668,9 @@ function drawPhotos(kind) {
   $('#pcount-' + kind).textContent = `${list.length}/5`;
   icons();
 }
-/* Compressão leve: redimensiona (máx. 900 px) e guarda JPEG a 72% */
+/* Compressão leve: valida tipo/tamanho, redimensiona e guarda JPEG a 72%. */
 const readPhoto = (file, max = 900, q = .72, square = false) => new Promise(res => {
+  if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024) return res(null);
   const fr = new FileReader();
   fr.onerror = () => res(null);
   fr.onload = () => {
@@ -732,6 +746,10 @@ const A = {
   backdrop: (t, e) => { if (e.target === t) closeSheet(); },
   eye: t => { const i = $('#' + t.dataset.target); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; t.innerHTML = ic(show ? 'eye-off' : 'eye'); icons(); },
   terms: () => openSheet('Termos e Condições e Privacidade', termsHtml()),
+  'enable-push': async () => {
+    const r = await enablePushNotifications();
+    toast(r.ok ? 'Notificações ativadas.' : r.reason === 'vapid_key_required' ? 'Falta configurar a chave VAPID no backend.' : 'Este navegador não permite notificações push aqui.');
+  },
 
   'otp-confirm': () => { const code = [0, 1, 2, 3].map(k => $('#otp' + k).value).join(''); if (code.length < 4) { $('#e-otp').textContent = 'Introduza os 4 dígitos.'; return; } verifyOtp(code); },
   resend: async t => {
@@ -821,12 +839,15 @@ const A = {
   chat: t => { const r = L.roommates.find(x => x.id === t.dataset.id); if (r) chatSheet(r); },
   'chat-send': t => {
     const inp = $('#chatIn'), txt = inp.value.trim(), box = $('#chat'); if (!txt) return;
+    const r = L.roommates.find(x => x.id === t.dataset.id), u = me();
+    const conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
+    api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: txt, context: { roommateId: t.dataset.id } });
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);
     inp.value = ''; box.scrollTop = box.scrollHeight;
-    setTimeout(() => { if (!$('#chat')) return; $('#chat').insertAdjacentHTML('beforeend', `<div class="max-w-[85%] bg-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm">Boa! Vamos combinar ver a casa amanhã à tarde. Pode ser?</div>`); $('#chat').scrollTop = 9e3; }, 1200);
   },
+  notifications: () => showNotifications(),
 
-  method: t => { ui.pay.phone = digits($('#payPhone')?.value) || ui.pay.phone; ui.pay.method = t.dataset.v; redraw(); },
+  method: t => { ui.pay.phone = digits($('#payPhone')?.value) || ui.pay.phone; ui.pay.method = methodForPhone(ui.pay.phone) || ui.pay.method; redraw(); },
   pay: startPay,
   'pay-retry': () => { ui.pay.status = 'idle'; ui.pay.token = null; redraw(); },
   'retry-feed': () => refreshFeed(),
@@ -835,7 +856,6 @@ const A = {
 
   add: () => nav('publish'),
   'w-publish': wizardPublish,
-  'photo-demo': t => { const k = t.dataset.kind, a = ui.w[k]; if (a.length >= 5) return toast('Máximo 5 fotos'); a.push(scene('demo' + uid(), k === 'ext' ? (a.length % 2 ? 2 : 0) : (a.length % 2 ? 4 : 1))); drawPhotos(k); },
   'photo-del': t => { ui.w[t.dataset.kind].splice(+t.dataset.i, 1); drawPhotos(t.dataset.kind); },
   'see-feed': async () => { const r = await api.updateUserProfile({ mode: 'inquilino' }); if (r.ok) setUser(r.data); ui.f = newFilters(); nav('home'); },
 
@@ -875,7 +895,7 @@ const A = {
       <p class="text-[11px] text-slate-500">Esqueceu a senha atual? Saia da conta e use “Esqueci a senha” no ecrã de entrada (código SMS).</p></form>`),
   'del-account': () => openSheet('Eliminar conta', `<div class="space-y-3">
       <div class="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-800 space-y-1.5"><b>Passo 1 de 2 · O que acontece:</b>
-        <ul class="list-disc pl-5 space-y-1"><li>O seu perfil, nome, número e foto são apagados.</li><li>Todos os seus anúncios ativos deixam de aparecer.</li><li>A subscrição de 35 MT em curso é perdida, sem reembolso.</li><li>Esta ação não pode ser desfeita.</li></ul></div>
+        <ul class="list-disc pl-5 space-y-1"><li>O seu perfil, nome, número e foto são apagados.</li><li>Todos os seus anúncios ativos deixam de aparecer.</li><li>A subscrição de 99 MT em curso é perdida, sem reembolso.</li><li>Esta ação não pode ser desfeita.</li></ul></div>
       <button data-act="del-step2" class="w-full py-3.5 rounded-xl bg-red-600 text-white font-bold">Continuar</button>
       <button data-act="close" class="w-full py-3 text-sm font-bold text-slate-500">Cancelar</button></div>`),
   'del-step2': () => openSheet('Confirmar eliminação', `<form data-submit="delete" class="space-y-3" novalidate>
@@ -883,9 +903,6 @@ const A = {
       <div>${pwField('dpw', 'Senha')}${err('dpw')}</div>
       <button class="w-full py-3.5 rounded-xl bg-red-600 text-white font-bold">Eliminar definitivamente</button>
       <button type="button" data-act="close" class="w-full py-3 text-sm font-bold text-slate-500">Cancelar</button></form>`),
-  'dev-expire-trial': async () => { api.dev.expireTrial(); await refreshUser(); toast('Período grátis terminado (teste)'); render(); },
-  'dev-reset-trial': async () => { api.dev.resetTrial(); await refreshUser(); await refreshProperties(); toast('15 dias grátis repostos (teste)'); render(); },
-  'demo-reset': () => { if (confirm('Apagar todos os dados da demonstração neste navegador?')) { api.dev.reset(); resetAll(); ui.w = null; ui.pay = null; ui.f = newFilters(); location.hash = '#/welcome'; render(); } }
 };
 
 
@@ -920,6 +937,15 @@ document.addEventListener('input', e => {
     const max = +t.dataset.digits || 9; let v = t.value.replace(/\D/g, '');
     if (max === 9) v = v.replace(/^258(?=\d{9})/, '');
     t.value = v.slice(0, max);
+    if (t.id === 'payPhone' && ui.pay) {
+      const detected = methodForPhone(t.value);
+      if (detected) {
+        ui.pay.method = detected;
+        const m = METHODS[detected];
+        if ($('#payOperatorName')) $('#payOperatorName').textContent = m.name;
+        if ($('#payOperatorHint')) $('#payOperatorHint').textContent = `${m.op} · detetada automaticamente pelo prefixo ${m.pre.join(' / ')}`;
+      }
+    }
   }
   if (t.dataset && t.dataset.bind) {
     setPath(ui, t.dataset.bind, t.type === 'checkbox' ? t.checked : t.value);
@@ -1030,5 +1056,14 @@ document.addEventListener('submit', async e => {
 addEventListener('hashchange', render);
 updateNet();
 view.innerHTML = `<div class="h-full grid place-items-center"><div class="spinner"></div></div>`;
-init().then(() => { if (!location.hash) location.replace('#/welcome'); else render(); });
+init().then(() => {
+  if (!location.hash) location.replace('#/welcome'); else render();
+  setInterval(async () => {
+    if (!store.user || currentScreen() !== 'APP_MAIN') return;
+    const before = (store.notifications || []).map(n => n.id).join(',');
+    await refreshNotifications();
+    const after = (store.notifications || []).map(n => n.id).join(',');
+    if (before !== after) { render(); if (after && before) toast('Tem notificações novas.'); }
+  }, 30000);
+});
 window.__casadireta = { store, currentScreen, api };
