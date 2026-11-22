@@ -116,7 +116,15 @@ export const verifyOtp = (phone, code, purpose = 'login', context = {}) => call(
   PAYMENT_API_BASE_URL, TUPC_AUTH_MODE
 );
 export const resetPassword = p => call(() => mock.resetPassword(p), () => request('POST', '/auth/reset-password', { body: p }));
-export const getCurrentUser = () => call(() => mock.getCurrentUser(), () => request('GET', '/auth/me'));
+export const getCurrentUser = () => call(
+  () => mock.getCurrentUser(),
+  async () => {
+    const data = await request('GET', '/paysuite-webhook?action=casadireta-me', { baseUrl: PAYMENT_API_BASE_URL });
+    return data.user || data;
+  },
+  PAYMENT_API_BASE_URL,
+  TUPC_AUTH_MODE
+);
 
 /* ── Subscrição: preço e operadora são resolvidos no backend Central/TUPC ── */
 export const createSubscription = ({ phone, role, idempotencyKey }) => call(
@@ -128,7 +136,7 @@ export const createSubscription = ({ phone, role, idempotencyKey }) => call(
   }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE
 );
 export const createSubscription35MT = createSubscription;
-export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/paysuite-webhook?action=subscription-status&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL);
+export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/paysuite-webhook?action=subscription-status&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE);
 export const getSubscriptionStatus = userId => call(() => mock.getSubscriptionStatus(userId), () => request('GET', '/subscriptions/status', { query: { userId } }));
 
 /* ── Imóveis ── */
