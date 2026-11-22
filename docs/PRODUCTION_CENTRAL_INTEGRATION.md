@@ -2,9 +2,33 @@
 
 ## Estado atual
 
-O frontend continua deliberadamente em `MOCK_MODE`. O projeto não deve receber
-pagamentos reais até o contrato Central/TUPC e o ambiente PaySuite sandbox
-estarem confirmados.
+O frontend mantém `MOCK_MODE` para imóveis, conversas e notificações enquanto
+esses contratos ainda não estão publicados. Auth/OTP e subscrição já usam as
+rotas TUPC CasaDireta publicadas no `paysuite-webhook`.
+
+## Bloqueio externo para ativar produção
+
+Para concluir a troca de todos os módulos falta publicar ou indicar um contrato
+Central/TUPC que cubra, para `app_code = casadireta`:
+
+1. sessão/auth e OTP MozSMS, incluindo os papéis `inquilino` e
+   `proprietario`;
+2. leitura/atualização de `core.profiles`;
+3. CRUD de imóveis e upload para `casadireta-properties`;
+4. conversas persistentes entre proprietário e inquilino;
+5. notificações in-app e dispatcher Web Push/FCM.
+
+O ramo CasaDireta foi adicionado à função Central existente, sem alterar o
+comportamento dos outros aplicativos. As rotas são:
+
+```text
+POST /functions/v1/paysuite-webhook?action=casadireta-request-otp
+POST /functions/v1/paysuite-webhook?action=casadireta-verify-otp
+```
+
+O segundo ramo cria/atualiza `core.profiles`, membership `casadireta` e wallet
+`casadireta:user:<auth_uid>`. A validação feita sem dados válidos retorna erros
+controlados; ainda falta homologar um SMS real com uma conta de teste autorizada.
 
 ## Contrato de pagamento preparado
 

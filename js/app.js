@@ -202,10 +202,10 @@ function vReset() {
 
 
 /* ───────────── OTP (MozSMS) ───────────── */
-async function startOtp(purpose, phone, userId, from) {
-  const r = await api.requestOtp(phone, purpose);
+async function startOtp(purpose, phone, userId, from, context = {}) {
+  const r = await api.requestOtp(phone, purpose, context);
   if (!r.ok) return r;
-  store.pendingOtp = { purpose, phone, userId, from, sentAt: Date.now(), resendIn: (r.data && r.data.resendIn) || OTP_RESEND_SECONDS, verified: false, busy: false, resetToken: null };
+  store.pendingOtp = { purpose, phone, userId, from, context, sentAt: Date.now(), resendIn: (r.data && (r.data.resendIn || r.data.expiresIn)) || OTP_RESEND_SECONDS, verified: false, busy: false, resetToken: null };
   nav('otp');
   return r;
 }
@@ -243,7 +243,7 @@ async function verifyOtp(code) {
   const o = store.pendingOtp; if (!o || o.busy || o.verified) return;
   $('#e-otp').textContent = '';
   o.busy = true; setOtpBusy(true);
-  const r = await api.verifyOtp(o.phone, code, o.purpose);
+  const r = await api.verifyOtp(o.phone, code, o.purpose, o.context || {});
   o.busy = false;
   if (!$('#otpRow')) return;
   setOtpBusy(false);
@@ -754,7 +754,7 @@ const A = {
   'otp-confirm': () => { const code = [0, 1, 2, 3].map(k => $('#otp' + k).value).join(''); if (code.length < 4) { $('#e-otp').textContent = 'Introduza os 4 dígitos.'; return; } verifyOtp(code); },
   resend: async t => {
     if (t.disabled) return;
-    const o = store.pendingOtp, r = await api.requestOtp(o.phone, o.purpose);
+    const o = store.pendingOtp, r = await api.requestOtp(o.phone, o.purpose, o.context || {});
     if (!r.ok) return toast(r.error.message);
     o.sentAt = Date.now(); toast('Novo código enviado');
   },
@@ -990,18 +990,14 @@ const H = {
     else if (pw !== pw2) { setErr('pw2', 'As senhas não coincidem.'); ok = false; }
     if (!$('#terms').checked) { setErr('terms', 'Tem de aceitar os Termos e Condições.'); ok = false; }
     if (!ok) return focusFirstErr();
-    const r = await api.registerUser({ name, phone, password: pw, role, acceptedTerms: true, termsVersion: TERMS_VERSION });
-    if (!r.ok) return fieldErr(r.error, { invalid_name: 'name', invalid_phone: 'phone', phone_taken: 'phone', weak_password: 'pw', invalid_role: 'role', terms_required: 'terms' });
-    const o = await startOtp('register', phone, r.data.userId, 'register');
+    const o = await startOtp('register', phone, null, 'register', { name, password: pw, role });
     if (!o.ok) toast(o.error.message);
   },
   async login(form, v) {
     const phone = digits(v('phone')), pw = v('pw');
     if (!validPhone(phone)) return setErr('phone', 'Número inválido.');
     if (!pw) return setErr('pw', 'Escreva a sua senha.');
-    const r = await api.loginUser({ phone, password: pw });
-    if (!r.ok) return fieldErr(r.error, { not_found: 'phone', invalid_credentials: 'pw' });
-    const o = await startOtp('login', phone, r.data.userId, 'login');     // entrar => sempre OTP
+    const o = await startOtp('login', phone, null, 'login', { password });     // entrar => sempre OTP
     if (!o.ok) toast(o.error.message);
   },
   async forgot(form, v) {

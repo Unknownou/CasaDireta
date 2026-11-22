@@ -4,6 +4,8 @@ export const MOCK_MODE = true;
 export const API_BASE_URL = 'http://localhost:3000/api';
 // Rota financeira partilhada do TUPC/Central (não consome uma Edge Function nova).
 export const PAYMENT_API_BASE_URL = 'https://tpmsgvkdjzoidvyiwwfk.supabase.co/functions/v1';
+export const TUPC_AUTH_MODE = true;
+export const REAL_PAYMENT_MODE = true;
 export const TUPC_BASE_URL = '';
 export const APP_CODE = 'casadireta';
 export const SUBSCRIPTION_PLAN_ID = 'casadireta_monthly_99_mzn';

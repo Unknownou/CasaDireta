@@ -33,7 +33,7 @@
  * O webhook do PaySuite chega ao BACKEND (nunca ao frontend); o frontend só consulta
  * GET /subscriptions/payments/:id até o estado deixar de ser 'pending'.
  */
-import { API_BASE_URL, PAYMENT_API_BASE_URL, MOCK_MODE, REQUEST_TIMEOUT_MS, APP_CODE, SUBSCRIPTION_PLAN_ID } from './config.js';
+import { API_BASE_URL, PAYMENT_API_BASE_URL, MOCK_MODE, TUPC_AUTH_MODE, REAL_PAYMENT_MODE, REQUEST_TIMEOUT_MS, APP_CODE, SUBSCRIPTION_PLAN_ID } from './config.js';
 import { mock, setMockToken, devTools } from './mockBackend.js';
 import { PRICES } from './utils.js';
 
@@ -60,7 +60,7 @@ async function request(method, path, { body, form, query, headers = {}, baseUrl 
   } finally { clearTimeout(timer); }
 }
 
-async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL) {
+async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL, forceReal = false) {
   try {
     if (!navigator.onLine) throw Object.assign(new Error('Sem internet. Verifique os dados móveis.'), { code: 'network' });
     if (!MOCK_MODE) {
@@ -69,7 +69,7 @@ async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL) {
         throw Object.assign(new Error('Configuração de produção inválida: a API Central precisa de HTTPS.'), { code: 'production_config' });
       }
     }
-    return { ok: true, data: MOCK_MODE ? await mockFn() : await realFn() };
+    return { ok: true, data: (MOCK_MODE && !forceReal) ? await mockFn() : await realFn() };
   } catch (e) {
     return { ok: false, error: { code: e.code || 'unknown', message: e.message || 'Ocorreu um erro. Tente novamente.', status: e.status || 0 } };
   }
@@ -97,8 +97,24 @@ function toQuery(f = {}) {
 /* ── Autenticação + OTP (MozSMS) ── */
 export const registerUser = p => call(() => mock.registerUser(p), () => request('POST', '/auth/register', { body: p }));
 export const loginUser = p => call(() => mock.loginUser(p), () => request('POST', '/auth/login', { body: p }));
-export const requestOtp = (phone, purpose) => call(() => mock.requestOtp({ phone, purpose }), () => request('POST', '/otp/request', { body: { phone, purpose } }));
-export const verifyOtp = (phone, code, purpose = 'login') => call(() => mock.verifyOtp({ phone, code, purpose }), () => request('POST', '/otp/verify', { body: { phone, code, purpose } }));
+export const requestOtp = (phone, purpose, context = {}) => call(
+  () => mock.requestOtp({ phone, purpose }),
+  () => request('POST', `/paysuite-webhook?action=casadireta-request-otp`, { baseUrl: PAYMENT_API_BASE_URL, body: { ...context, phone, flow: purpose === 'register' ? 'signup' : purpose, app_code: APP_CODE } }),
+  PAYMENT_API_BASE_URL, TUPC_AUTH_MODE
+);
+export const verifyOtp = (phone, code, purpose = 'login', context = {}) => call(
+  () => mock.verifyOtp({ phone, code, purpose }),
+  async () => {
+    const data = await request('POST', `/paysuite-webhook?action=casadireta-verify-otp`, { baseUrl: PAYMENT_API_BASE_URL, body: { ...context, phone, code, flow: purpose === 'register' ? 'signup' : purpose, app_code: APP_CODE } });
+    const sourceUser = data.user || {};
+    return {
+      ...data,
+      token: data.token || data.session?.access_token,
+      user: { id: sourceUser.id || data.user_id, name: sourceUser.user_metadata?.full_name || context.name || 'Utilizador CasaDireta', phone, mode: data.role || context.role || 'inquilino' }
+    };
+  },
+  PAYMENT_API_BASE_URL, TUPC_AUTH_MODE
+);
 export const resetPassword = p => call(() => mock.resetPassword(p), () => request('POST', '/auth/reset-password', { body: p }));
 export const getCurrentUser = () => call(() => mock.getCurrentUser(), () => request('GET', '/auth/me'));
 
@@ -109,7 +125,7 @@ export const createSubscription = ({ phone, role, idempotencyKey }) => call(
     baseUrl: PAYMENT_API_BASE_URL,
     body: { phone, role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
     headers: { 'Idempotency-Key': idempotencyKey || crypto.randomUUID() }
-  }), PAYMENT_API_BASE_URL
+  }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE
 );
 export const createSubscription35MT = createSubscription;
 export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/paysuite-webhook?action=subscription-status&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL);
