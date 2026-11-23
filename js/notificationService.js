@@ -6,12 +6,15 @@ function vapidKey(value) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 export async function enablePushNotifications() {
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, reason: 'unsupported' };
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return { ok: false, reason: 'denied' };
-  if (!PUSH_VAPID_PUBLIC_KEY) return { ok: false, reason: 'vapid_key_required' };
-  const registration = await navigator.serviceWorker.register('./service-worker.js');
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey(PUSH_VAPID_PUBLIC_KEY) });
-  return api.registerPushToken({ token: JSON.stringify(subscription), platform: 'web', userAgent: navigator.userAgent });
+  try {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, reason: 'unsupported' };
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return { ok: false, reason: 'denied' };
+    if (!PUSH_VAPID_PUBLIC_KEY) return { ok: false, reason: 'vapid_key_required' };
+    const registration = await navigator.serviceWorker.register('./service-worker.js', { scope: './' });
+    await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey(PUSH_VAPID_PUBLIC_KEY) });
+    return api.registerPushToken({ token: JSON.stringify(subscription), platform: 'web', userAgent: navigator.userAgent });
+  } catch (e) { return { ok: false, reason: e?.name === 'NotAllowedError' ? 'denied' : 'push_registration_failed' }; }
 }

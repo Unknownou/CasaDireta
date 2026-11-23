@@ -895,7 +895,7 @@ const A = {
     const u = me(), prop = u.mode === 'proprietario';
     openSheet('Editar perfil', `<div class="space-y-3">
       <div><label class="text-xs font-bold" for="pe-name">Nome completo</label><input id="pe-name" class="field mt-1" value="${esc(u.name)}"></div>
-      <div><label class="text-xs font-bold" for="pe-zone">${prop ? 'Zona' : 'Bairro / Zona onde procuro'}</label><input id="pe-zone" list="hoods-list" class="field mt-1" value="${esc(u.zone || '')}" placeholder="Ex.: Zimpeto"></div>
+      <div><label class="text-xs font-bold" for="pe-zone">${prop ? 'Zona' : 'Bairro / Zona onde procuro'}</label><select id="pe-zone" class="field mt-1"><option value="">Escolha o bairro/zona</option>${HOODS.map(h => `<option value="${esc(h)}" ${u.zone === h ? 'selected' : ''}>${esc(h)}</option>`).join('')}</select></div>
       ${prop ? '' : `<p class="text-xs font-bold text-slate-500 pt-1">Perfil para Dividir Renda (opcional)</p>
       <div class="grid grid-cols-3 gap-3"><div class="col-span-2"><label class="text-xs font-bold" for="pe-job">Estudante / Trabalhador</label><input id="pe-job" class="field mt-1" value="${esc(u.job || '')}" placeholder="Ex.: Estudante de Direito"></div><div><label class="text-xs font-bold" for="pe-age">Idade</label><input id="pe-age" inputmode="numeric" data-digits="2" class="field mt-1" value="${u.age || ''}"></div></div>
       <div class="flex flex-wrap gap-2" id="pe-habits">${HABITS.map(h => `<button type="button" data-act="chip" class="chip" aria-pressed="${(u.habits || []).includes(h)}">${h}</button>`).join('')}</div>`}

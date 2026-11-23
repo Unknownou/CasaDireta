@@ -190,10 +190,10 @@ export const changePassword = d => call(() => mock.changePassword(d), () => requ
 export const deleteUserAccount = (d = {}) => call(() => mock.deleteUserAccount(d), () => request('DELETE', '/users/me', { body: d }));
 
 /* Suporte partilhado com a Central/TUPC, disponível nos dois modos de perfil. */
-export const listSupportCases = () => call(() => [], () => tupcRequest('GET', 'support_cases?select=*&order=updated_at.desc&limit=30'), TUPC_REST_BASE_URL, TUPC_AUTH_MODE);
-export const createSupportCase = data => call(() => data, () => tupcRequest('POST', 'support_cases', { body: data }), TUPC_REST_BASE_URL, TUPC_AUTH_MODE);
-export const listSupportMessages = id => call(() => [], () => tupcRequest('GET', `support_messages?case_id=eq.${encodeURIComponent(id)}&select=*&order=created_at.asc`), TUPC_REST_BASE_URL, TUPC_AUTH_MODE);
-export const sendSupportMessage = (id, data) => call(() => data, () => tupcRequest('POST', 'support_messages', { body: { ...data, case_id: id, author_type: 'customer' } }), TUPC_REST_BASE_URL, TUPC_AUTH_MODE);
+export const listSupportCases = () => call(() => [], () => request('GET', '/paysuite-webhook?action=casadireta-support-cases', { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const createSupportCase = data => call(() => data, () => request('POST', '/paysuite-webhook?action=casadireta-support-cases', { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const listSupportMessages = id => call(() => [], () => request('GET', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const sendSupportMessage = (id, data) => call(() => data, () => request('POST', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 
 /* Só para demonstração (não existe no backend real): simular fim/reposição dos 15 dias grátis */
 export const dev = devTools;
