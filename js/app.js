@@ -4,7 +4,7 @@ import { store, init, currentScreen, persist, startSession, endSession, refreshS
 import * as api from './apiService.js';
 import { enablePushNotifications } from './notificationService.js';
 import { syncIdentity } from './tupc.js';
-import { OTP_RESEND_SECONDS } from './config.js';
+import { OTP_RESEND_SECONDS, LEGAL_TERMS_URL, PRIVACY_POLICY_URL } from './config.js';
 import { $, $$, esc, norm, num, mt, digits, validPhone, fmtPhone, mzPhone, first, initials, uid, fmtDate, fmtTime, roomsTxt, TYPES, AM, PRICES, ZONES, HOODS, ADV, HABITS, REPORTS, ic, icons, scene, photosOf, coverOf, photoCount, PRICE, DAY, TRIAL_DAYS, TERMS_VERSION, accessStatus, subscribed, daysLeft, homeOf, operatorForPhone } from './utils.js';
 
 const L = new Proxy({}, { get: (_, k) => store.local[k] });   // dados locais do cliente (favoritos, contactos...)
@@ -668,6 +668,7 @@ function vProfile() {
     </div>`;
 }
 const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-relaxed">
+  <div class="flex flex-wrap gap-2"><a href="${LEGAL_TERMS_URL}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg bg-brand text-white text-xs font-bold">Abrir termos completos</a><a href="${PRIVACY_POLICY_URL}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg border border-slate-200 text-brand text-xs font-bold">Abrir política de privacidade</a></div>
   <section><h3 class="font-extrabold text-ink">Responsabilidade da plataforma</h3><p>A CasaDireta é uma aplicação da <b>DeliGo Triunfal, Lda.</b>, responsável pela operação e manutenção do serviço. Todos os direitos sobre a aplicação, marca, código, conteúdos e funcionalidades são reservados à DeliGo Triunfal, Lda.</p></section>
   <section><h3 class="font-extrabold text-ink">1. 15 dias grátis e subscrição de 99 MT</h3>
     <p>Quando valida o seu número por SMS pela primeira vez, a conta ganha <b>15 dias grátis</b>, com acesso completo, tanto para <b>inquilinos</b> como para <b>proprietários</b>.</p>

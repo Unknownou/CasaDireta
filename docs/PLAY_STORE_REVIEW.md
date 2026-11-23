@@ -15,7 +15,7 @@ Data da revisão: 23/11/2026
 | HTTPS | HTTP claro desativado no Android (`usesCleartextTraffic=false`) |
 | Permissões | INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS |
 | Localização/câmara | Não declaradas |
-| Termos/privacidade | Texto final dentro da app, com DeliGo Triunfal, Lda. e direitos reservados; ainda falta URL pública |
+| Termos/privacidade | URLs públicas da DeliGo Triunfal ligadas na app |
 | Screenshots | Não há conjunto oficial de screenshots de loja no repositório |
 
 `npm audit --omit=dev --audit-level=high` encontrou 3 vulnerabilidades transitivas no toolchain Capacitor (`@capacitor/android` e `tar`, incluindo 1 alta e 2 críticas). Não executei `npm audit fix` automaticamente porque pode atualizar o runtime nativo e alterar o APK; isso requer uma rodada própria de atualização, testes e revisão.
@@ -47,7 +47,7 @@ Segurança a declarar apenas após confirmação operacional: transmissão por H
 
 ## Termos e política de privacidade
 
-O texto atual dentro da app menciona DeliGo Triunfal, Lda., eliminação de conta, OTP, PaySuite, MozSMS e dados tratados. Porém, contém a indicação “Texto de demonstração, a rever por um jurista antes do lançamento”. Isto é bloqueador de lançamento: publicar uma URL pública de política de privacidade e termos finais, com entidade responsável, contacto, bases/finalidades, retenção, partilha, direitos, eliminação e tratamento de menores.
+As URLs públicas usadas pela app são [Termos e condições](https://www.deligotriunfal.site/termos) e [Privacidade](https://www.deligotriunfal.site/privacidade). A entidade responsável indicada no site é DeliGo Triunfal, Lda.; confirmar no conteúdo público que as páginas cobrem contacto, finalidades, retenção, partilha, direitos, eliminação e tratamento de menores.
 
 ## Screenshots e ficha da loja
 
@@ -68,7 +68,7 @@ Usar capturas em telemóvel real ou emulador, sem molduras enganosas, com texto 
 - configurar assinatura Play App Signing e proteger a keystore de upload;
 - gerar e validar um AAB release assinado, não apenas APK debug;
 - preencher Data Safety, classificação de conteúdo, público-alvo e anúncios;
-- publicar URL pública de privacidade e termos finais;
+- confirmar as URLs públicas de privacidade e termos finais na ficha da Play Store;
 - carregar screenshots, ícone, textos, email de suporte e ficha da loja;
 - executar teste interno/fechado com contas de teste e confirmar login, OTP, notificações, chat, fotos e pagamento;
 - submeter para revisão. Nenhuma submissão foi feita por esta revisão local.
