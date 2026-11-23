@@ -280,8 +280,7 @@ function vPay() {
       <div class="spinner mx-auto mt-16"></div>
       <h1 class="mt-6 text-lg font-extrabold">A aguardar confirmação no telemóvel...</h1>
       <p class="mt-2 text-sm text-slate-600">Enviamos um pedido de <b>${mt(PRICE)}</b> via ${m.name} para <b>${fmtPhone(p.phone)}</b>. Confirme o PIN no seu telemóvel.</p>
-      <div class="mt-6 mx-auto max-w-[260px] rounded-2xl bg-ink text-left text-emerald-300 font-mono text-xs p-4 leading-relaxed">${m.name}<br>Pagar ${mt(PRICE)} a CasaDireta?<br>Introduza o seu PIN e confirme.<br><span class="text-slate-500">(simulação, nunca digite o PIN aqui)</span></div>
-      <p class="mt-5 text-xs text-slate-500">Não feche nem toque outra vez. A ligação móvel pode demorar.</p>
+      <p class="mt-5 text-xs text-slate-500">Aguarde a abertura do checkout PaySuite. Não feche esta página.</p>
       <button data-act="pay-cancel" class="mt-4 text-sm font-bold text-slate-500 underline">Cancelar</button>
     </div>`;
   }
@@ -330,8 +329,7 @@ async function startPay() {
   if (!ui.pay || ui.pay.token !== tk) return;
   if (!r.ok) return payFailed(tk, r.error.message);
   if (r.data.checkout_url) { window.location.assign(r.data.checkout_url); return; }
-  p.paymentId = r.data.paymentId;
-  pollPayment(tk);
+  return payFailed(tk, 'O PaySuite não devolveu o checkout. Nenhum pagamento foi confirmado. Tente novamente.');
 }
 function payFailed(tk, msg) { if (!ui.pay || ui.pay.token !== tk) return; ui.pay.status = 'failed'; ui.pay.error = msg; redraw(); }
 async function pollPayment(tk) {
