@@ -106,7 +106,7 @@ function toast(msg) {
 }
 function showNotifications() {
   const items = store.notifications || [];
-  openSheet('Notificações', items.length ? `<div class="space-y-3">${items.map(n => `<article class="rounded-xl bg-emerald-50 p-3"><p class="font-bold text-sm">${esc(n.title)}</p><p class="text-xs text-slate-600 mt-1">${esc(n.body)}</p><p class="text-[11px] text-slate-400 mt-2">${fmtDate(n.created)}</p></article>`).join('')}</div>` : '<p class="text-sm text-slate-500 py-8 text-center">Ainda não há notificações.</p>');
+  openSheet('Notificações', items.length ? `<div class="space-y-3">${items.map(n => { const parts = String(n.type || '').split(':'); const reply = parts[0] === 'roommate_message' && parts[1] && parts[2]; return `<article class="rounded-xl bg-emerald-50 p-3"><p class="font-bold text-sm">${esc(n.title)}</p><p class="text-xs text-slate-600 mt-1">${esc(n.body)}</p><p class="text-[11px] text-slate-400 mt-2">${fmtDate(n.created)}</p>${reply ? `<button data-act="notification-reply" data-roommate-id="${esc(parts[1])}" data-from-user-id="${esc(parts[2])}" class="mt-3 w-full py-2.5 rounded-xl bg-brand text-white text-sm font-bold">Responder</button>` : ''}</article>`; }).join('')}</div>` : '<p class="text-sm text-slate-500 py-8 text-center">Ainda não há notificações.</p>');
   if (items.length) api.markNotificationsRead(items.map(n => n.id)).then(() => { store.notifications = []; renderChrome(parse().r, me()); });
 }
 function openSheet(title, body) {
@@ -866,6 +866,7 @@ const A = {
     inp.value = ''; box.scrollTop = box.scrollHeight;
   },
   notifications: () => showNotifications(),
+  'notification-reply': t => { const post = store.roommates.find(r => r.id === t.dataset.roommateId); if (!post) return toast('Esta publicação já não está disponível.'); closeSheet(); chatSheet({ ...post, userId: t.dataset.fromUserId, name: 'colega interessado' }); },
 
   method: t => { ui.pay.phone = digits($('#payPhone')?.value) || ui.pay.phone; ui.pay.method = methodForPhone(ui.pay.phone) || ui.pay.method; redraw(); },
   pay: startPay,
