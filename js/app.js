@@ -137,14 +137,14 @@ addEventListener('offline', updateNet);
 try { navigator.connection && navigator.connection.addEventListener('change', updateNet); } catch (e) { /* ignora */ }
 
 /* ───────────── AUTH: boas-vindas, entrar, criar conta, recuperar ───────────── */
-const authTabs = a => `<div class="p-4 pb-0"><div class="flex items-center gap-2 mb-4"><span class="w-9 h-9 rounded-xl bg-brand text-white grid place-items-center">${ic('home', 'w-5 h-5')}</span><span class="font-extrabold text-lg">Casa<span class="text-brand">Direta</span></span></div>
+const authTabs = a => `<div class="p-4 pb-0"><div class="flex items-center gap-2 mb-4"><img src="assets/casadireta-icon.png" alt="CasaDireta" class="w-9 h-9 rounded-xl object-cover shadow-sm"><span class="font-extrabold text-lg">Casa<span class="text-brand">Direta</span></span></div>
   <div class="grid grid-cols-2 bg-slate-200/70 rounded-xl p-1" role="tablist">
     <button role="tab" aria-selected="${a === 'login'}" data-act="go" data-to="login" class="py-2.5 rounded-lg text-sm font-bold ${a === 'login' ? 'bg-white shadow text-brand' : 'text-slate-600'}">Entrar</button>
     <button role="tab" aria-selected="${a === 'register'}" data-act="go" data-to="register" class="py-2.5 rounded-lg text-sm font-bold ${a === 'register' ? 'bg-white shadow text-brand' : 'text-slate-600'}">Criar Conta</button></div></div>`;
 
 function vWelcome() {
   return `<section class="min-h-full flex flex-col text-white px-6 pt-12 pb-8 bg-gradient-to-b from-brand via-brand to-ink">
-    <div class="flex items-center gap-2.5"><div class="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center">${ic('home', 'w-6 h-6')}</div><span class="text-2xl font-extrabold tracking-tight">Casa<span class="text-amber-400">Direta</span></span></div>
+    <div class="flex items-center gap-2.5"><img src="assets/casadireta-icon.png" alt="CasaDireta" class="w-11 h-11 rounded-2xl object-cover shadow-sm"><span class="text-2xl font-extrabold tracking-tight">Casa<span class="text-amber-400">Direta</span></span></div>
     <div class="mt-10 flex-1">
       <p class="inline-flex items-center gap-1.5 bg-amber-500 text-ink text-xs font-bold px-3 py-1.5 rounded-full">${ic('badge-check', 'w-4 h-4')} Sem taxas de visita</p>
       <h1 class="mt-4 text-[2rem] leading-[1.15] font-extrabold">Encontre quartos e casas direto com o proprietário.</h1>

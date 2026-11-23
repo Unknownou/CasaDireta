@@ -88,7 +88,24 @@ export const DESCS = [
 /* ── Acesso: 15 dias grátis -> bloqueio -> subscrição de 99 MT (a data final é validada pelo servidor) ── */
 export const TRIAL_DAYS = 15;
 export const TERMS_VERSION = 2;
-export const accessStatus = (u, now = Date.now()) => (!u ? null : u.subscribedUntil > now ? 'SUBSCRIBED_ACTIVE' : u.trialEndsAt > now ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED');
+export const epoch = value => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+};
+export const accessStatus = (u, now = Date.now()) => {
+  if (!u) return null;
+  const paidUntil = epoch(u.subscribedUntil);
+  const trialUntil = epoch(u.trialEndsAt);
+  if (paidUntil > now) return 'SUBSCRIBED_ACTIVE';
+  if (!trialUntil) return null; // nunca bloquear uma conta por uma data ausente/inválida
+  return trialUntil > now ? 'TRIAL_ACTIVE' : 'TRIAL_EXPIRED';
+};
 export const subscribed = u => !!u && accessStatus(u) !== 'TRIAL_EXPIRED';
-export const daysLeft = ts => Math.max(0, Math.ceil((ts - Date.now()) / DAY));
+export const daysLeft = ts => Math.max(0, Math.ceil((epoch(ts) - Date.now()) / DAY));
 export const homeOf = u => (u.mode === 'proprietario' ? 'owner' : 'home');

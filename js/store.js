@@ -8,7 +8,7 @@
  *   - sessão válida e accessStatus 'TRIAL_ACTIVE' | 'SUBSCRIBED_ACTIVE' . APP_MAIN
  */
 import * as api from './apiService.js';
-import { subscribed, accessStatus } from './utils.js';
+import { subscribed, accessStatus, epoch } from './utils.js';
 
 const KEY = 'casadireta:client';
 const freshLocal = () => ({ favs: {}, interests: {}, contacts: {}, roommates: [], chats: [] });
@@ -83,7 +83,12 @@ async function enterMain() {
 export async function refreshSubscription() {
   if (!store.user) return;
   const r = await api.getSubscriptionStatus(store.user.id);
-  if (r.ok) { store.user = { ...store.user, ...r.data }; store.subscriptionChecked = true; }
+  // Só concluímos a verificação quando o servidor devolve uma data de trial
+  // ou de subscrição válida. Uma resposta incompleta/temporariamente inválida
+  // não pode enviar uma conta nova para o paywall.
+  const data = r.ok ? (r.data || {}) : null;
+  const hasValidAccessDate = data && (epoch(data.trialEndsAt) > 0 || epoch(data.subscribedUntil) > 0);
+  if (hasValidAccessDate) { store.user = { ...store.user, ...data }; store.subscriptionChecked = true; }
   emit();
 }
 export async function refreshUser() {
