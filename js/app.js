@@ -412,7 +412,7 @@ async function refreshFeed() {
   const u = me();
   if (!r.ok) {
     if (r.error.code === 'access_blocked') { await refreshUser(); return render(); }
-    feed.innerHTML = empty('wifi-off', 'Não foi possível carregar', esc(r.error.message), `<button data-act="retry-feed" class="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-bold text-sm">Tentar de novo</button>`);
+    feed.innerHTML = empty('search', 'Nenhuma casa encontrada', 'Ainda não há anúncios disponíveis. Tente novamente mais tarde.', `<button data-act="retry-feed" class="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-bold text-sm">Atualizar</button>`);
     icons(); return;
   }
   const list = r.data;
