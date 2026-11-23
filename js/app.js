@@ -290,7 +290,6 @@ function vPay() {
       <h1 class="mt-4 text-xl font-extrabold">Pagamento não concluído</h1>
       <p class="mt-2 text-sm text-slate-600">${esc(p.error)}</p>
       <div class="mt-6">${primaryBtn('Tentar novamente', 'pay-retry')}</div>
-      ${locked ? `<button data-act="logout" class="mt-5 text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button>` : ''}
     </div>`;
   }
   const paid = Array.isArray(u.payments) && u.payments.length > 0;
@@ -311,7 +310,6 @@ function vPay() {
       <span class="w-10 h-10 rounded-full grid place-items-center ${m.c}">${ic('smartphone')}</span><div><b id="payOperatorName" class="block">${m.name}</b><span id="payOperatorHint" class="text-xs text-slate-600">${m.op} · detetada automaticamente pelo prefixo ${m.pre.join(' / ')}</span></div></div>
     <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm"><span class="font-bold">Número para pagamento:</span> ${fmtPhone(p.phone)}<br><span class="text-xs text-slate-600">A operadora é detetada automaticamente pelo prefixo do seu número.</span></div>
     <div class="mt-3">${primaryBtn(`Pagar ${PRICE} MT${locked ? ' e Continuar' : ' Agora'}`, 'pay')}</div>
-    ${locked ? `<div class="mt-5 text-center"><button data-act="logout" class="text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button></div>` : ''}
   </div>`;
 }
 async function startPay() {
