@@ -900,14 +900,15 @@ const A = {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       voiceChunks = [];
       const formats = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-      const mimeType = formats.find(type => MediaRecorder.isTypeSupported?.(type)) || '';
-      voiceRecorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 });
+      let recorder = null;
+      for (const type of formats) { try { if (!MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(type)) { recorder = new MediaRecorder(stream, { mimeType: type }); break; } } catch { /* tenta o formato seguinte */ } }
+      voiceRecorder = recorder || new MediaRecorder(stream);
       t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
       const timeout = setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
       voiceRecorder.ondataavailable = e => { if (e.data.size) voiceChunks.push(e.data); };
       voiceRecorder.onstop = async () => {
         clearTimeout(timeout); stream.getTracks().forEach(track => track.stop());
-        const blob = new Blob(voiceChunks, { type: voiceRecorder?.mimeType || mimeType || 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
+        const blob = new Blob(voiceChunks, { type: voiceRecorder?.mimeType || 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
         if (blob.size > 320_000) return toast('Áudio muito grande. Grave uma mensagem mais curta.');
         const reader = new FileReader(); reader.onload = async () => {
           const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
