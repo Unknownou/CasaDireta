@@ -40,12 +40,17 @@ export function currentScreen() {
 }
 
 export function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify({ token: store.token, local: store.local })); } catch (e) { /* quota: ignora */ }
+  try {
+    // Keep the bearer token only for this browser session; localStorage survives
+    // shared-device use and makes token theft persist across browser restarts.
+    sessionStorage.setItem(KEY, JSON.stringify({ token: store.token, local: store.local }));
+    localStorage.removeItem(KEY);
+  } catch (e) { /* storage indisponível: a sessão continua em memória */ }
 }
 
 export async function init() {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
     if (saved && saved.local) store.local = { ...freshLocal(), ...saved.local };
     // Remove dados de demonstração/orfãos antes da entrada em produção.
     store.local.roommates = (store.local.roommates || []).filter(r => r.userId);

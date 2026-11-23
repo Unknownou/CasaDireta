@@ -5,7 +5,7 @@ import * as api from './apiService.js';
 import { enablePushNotifications } from './notificationService.js';
 import { syncIdentity } from './tupc.js';
 import { OTP_RESEND_SECONDS } from './config.js';
-import { $, $$, esc, norm, num, mt, digits, validPhone, fmtPhone, first, initials, uid, fmtDate, fmtTime, roomsTxt, TYPES, AM, PRICES, ZONES, HOODS, ADV, HABITS, REPORTS, ic, icons, scene, photosOf, coverOf, photoCount, PRICE, DAY, TRIAL_DAYS, TERMS_VERSION, accessStatus, subscribed, daysLeft, homeOf, operatorForPhone } from './utils.js';
+import { $, $$, esc, norm, num, mt, digits, validPhone, fmtPhone, mzPhone, first, initials, uid, fmtDate, fmtTime, roomsTxt, TYPES, AM, PRICES, ZONES, HOODS, ADV, HABITS, REPORTS, ic, icons, scene, photosOf, coverOf, photoCount, PRICE, DAY, TRIAL_DAYS, TERMS_VERSION, accessStatus, subscribed, daysLeft, homeOf, operatorForPhone } from './utils.js';
 
 const L = new Proxy({}, { get: (_, k) => store.local[k] });   // dados locais do cliente (favoritos, contactos...)
 const me = () => store.user;
@@ -356,9 +356,21 @@ async function pollPayment(tk) {
 async function finishPay(tk, d) {
   if (!ui.pay || ui.pay.token !== tk) return;
   await refreshSubscription();
+  const authoritativeUser = me();
+  const subscribedUntil = Number(authoritativeUser?.subscribedUntil || 0);
+  const status = String(authoritativeUser?.subscriptionStatus || '');
+  const amount = Number(d.amount ?? (d.amount_minor != null ? d.amount_minor / 100 : NaN));
+  // A confirmação do provedor, sozinha, não é suficiente para desbloquear:
+  // a Central precisa ter aplicado a subscrição e devolvido a data autoritativa.
+  if (status !== 'SUBSCRIBED_ACTIVE' || !Number.isFinite(subscribedUntil) || subscribedUntil <= Date.now()) {
+    return payFailed(tk, 'Pagamento recebido, mas a subscrição ainda não foi confirmada pela Central. Não foi concedido acesso. Aguarde e consulte novamente.');
+  }
+  if (Number.isFinite(amount) && amount !== PRICE) {
+    return payFailed(tk, 'O valor confirmado não corresponde ao plano CasaDireta de 99 MT. O acesso não foi desbloqueado.');
+  }
   await refreshProperties();
   const p = ui.pay, method = d.method || p.method || 'mpesa';
-  ui.receipt = { amount: d.amount || (d.amount_minor ? d.amount_minor / 100 : PRICE), method: METHODS[method]?.name || method, phone: d.phone || p.phone, ref: d.reference || d.provider_reference || d.paymentId || p.paymentId, date: d.paidAt || d.paid_at || Date.now(), until: d.validUntil || d.period_ends_at || d.subscribedUntil || Date.now() + 30 * DAY };
+  ui.receipt = { amount: Number.isFinite(amount) ? amount : PRICE, method: METHODS[method]?.name || method, phone: d.phone || p.phone, ref: d.reference || d.provider_reference || d.paymentId || p.paymentId, date: d.paidAt || d.paid_at || Date.now(), until: subscribedUntil };
   ui.pay = null;
   nav('receipt');
 }
@@ -455,10 +467,11 @@ function drawFilter() {
     <div class="mt-6 flex gap-3"><button data-act="ft-clear" class="px-5 py-3.5 rounded-xl border-2 border-slate-200 font-bold text-sm">Limpar</button><button data-act="ft-apply" class="flex-1 py-3.5 rounded-xl bg-brand text-white font-bold">Aplicar filtros</button></div>`);
 }
 function contactSheet(l) {
-  const wa = `https://wa.me/258${l.phone}?text=${encodeURIComponent(`Olá ${first(l.owner)}! Vi o anúncio "${l.title}" (${num(l.price)} MT/mês) na CasaDireta. Ainda está disponível?`)}`;
+  const phone = mzPhone(l.phone);
+  const wa = `https://wa.me/${phone}?text=${encodeURIComponent(`Olá ${first(l.owner)}! Vi o anúncio "${l.title}" (${num(l.price)} MT/mês) na CasaDireta. Ainda está disponível?`)}`;
   openSheet('Contactar proprietário', `<div class="flex items-center gap-3 mb-4">${ownerAvatar(l, 'w-12 h-12')}<div><b class="block">${esc(l.owner)}</b>${badgeVerified('mt-1')}</div></div>
     <div class="space-y-3"><a href="${wa}" target="_blank" rel="noopener" data-act="wa" data-id="${l.id}" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-light text-white font-extrabold">${ic('message-circle')} Falar no WhatsApp</a>
-    <a href="tel:+258${l.phone}" data-act="call" data-id="${l.id}" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-ink text-white font-bold">${ic('phone')} Ligar · ${fmtPhone(l.phone)}</a></div>`);
+    <a href="tel:+${phone}" data-act="call" data-id="${l.id}" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-ink text-white font-bold">${ic('phone')} Ligar · ${fmtPhone(l.phone)}</a></div>`);
 }
 function ownerAvatar(l, cls) {
   const ou = l.ownerId && me() && l.ownerId === me().id ? me() : null;
@@ -485,9 +498,10 @@ function vListing(id) {
   if (!mine && !ui.seen[id]) { ui.seen[id] = 1; l.views++; api.trackProperty(id, 'view'); }
   ui.mount = mountGal;
   const ph = photosOf(l);
-  const wa = `https://wa.me/258${l.phone}?text=${encodeURIComponent(`Olá ${first(l.owner)}! Vi o anúncio "${l.title}" (${num(l.price)} MT/mês) na CasaDireta. Ainda está disponível?`)}`;
+  const phone = mzPhone(l.phone);
+  const wa = `https://wa.me/${phone}?text=${encodeURIComponent(`Olá ${first(l.owner)}! Vi o anúncio "${l.title}" (${num(l.price)} MT/mês) na CasaDireta. Ainda está disponível?`)}`;
   const contacts = `<div class="grid grid-cols-2 gap-2.5 mt-3">
-      <a href="tel:+258${l.phone}" data-act="call" data-id="${l.id}" class="flex items-center justify-center gap-1.5 py-3 rounded-xl bg-ink text-white font-bold text-sm">${ic('phone', 'w-4 h-4')} Ligar Direto</a>
+      <a href="tel:+${phone}" data-act="call" data-id="${l.id}" class="flex items-center justify-center gap-1.5 py-3 rounded-xl bg-ink text-white font-bold text-sm">${ic('phone', 'w-4 h-4')} Ligar Direto</a>
       <a href="${wa}" target="_blank" rel="noopener" data-act="wa" data-id="${l.id}" class="flex items-center justify-center gap-1.5 py-3 rounded-xl bg-brand-light text-white font-bold text-sm">${ic('message-circle', 'w-4 h-4')} WhatsApp</a></div>
       <p class="text-center text-xs text-slate-500 mt-2">${fmtPhone(l.phone)}</p>`;
   const actions = mine ? `
@@ -665,7 +679,7 @@ const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-re
   <section><h3 class="font-extrabold text-ink">4. Como usamos os seus dados</h3><p>Usamos o nome, o telemóvel, a foto, as preferências e os anúncios apenas para o funcionamento da CasaDireta: verificar a conta, mostrar o seu perfil e anúncios e permitir contacto direto entre inquilinos e proprietários.</p>
     <p class="mt-1.5">O seu número é partilhado com o serviço de SMS (MozSMS) para enviar o código de verificação e com o PaySuite e a operadora para processar o pagamento. Não vendemos os seus dados. Pode alterá-los ou <b>eliminar a conta</b> a qualquer momento no Perfil; os anúncios e dados pessoais são apagados.</p></section>
   <section><h3 class="font-extrabold text-ink">5. Segurança</h3><p>Nunca partilhe o seu PIN. Desconfie de quem pede dinheiro antes de ver a casa e denuncie o anúncio na própria app.</p></section>
-  <p class="text-xs text-slate-400">Versão ${TERMS_VERSION} · atualizada a 22 Nov 2026. Texto de demonstração, a rever por um jurista antes do lançamento.</p></div>`;
+  <p class="text-xs text-slate-400">Versão ${TERMS_VERSION} · atualizada a 23 Nov 2026. Todos os direitos reservados à DeliGo Triunfal, Lda.</p></div>`;
 
 /* ───────────── Proprietário: Minhas Casas e Publicar ───────────── */
 function vOwner() {

@@ -34,11 +34,10 @@
  * GET /subscriptions/payments/:id até o estado deixar de ser 'pending'.
  */
 import { API_BASE_URL, PAYMENT_API_BASE_URL, TUPC_REST_BASE_URL, SUPABASE_PUBLISHABLE_KEY, MOCK_MODE, TUPC_AUTH_MODE, REAL_PAYMENT_MODE, REQUEST_TIMEOUT_MS, APP_CODE, SUBSCRIPTION_PLAN_ID } from './config.js';
-import { mock, setMockToken, devTools } from './mockBackend.js';
 import { PRICES, TYPES } from './utils.js';
 
 let authToken = null;
-export function setAuthToken(t) { authToken = t; setMockToken(t); }
+export function setAuthToken(t) { authToken = t || null; }
 
 async function fetchWithTimeout(input, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const ctrl = new AbortController();
@@ -73,7 +72,7 @@ async function request(method, path, { body, form, query, headers = {}, baseUrl 
   } finally { clearTimeout(timer); }
 }
 
-async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL, forceReal = false) {
+async function call(_unusedMockFn, realFn, validationBaseUrl = API_BASE_URL) {
   try {
     if (!navigator.onLine) throw Object.assign(new Error('Sem internet. Verifique os dados móveis.'), { code: 'network' });
     if (!MOCK_MODE) {
@@ -82,7 +81,8 @@ async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL, forceReal 
         throw Object.assign(new Error('Configuração de produção inválida: a API Central precisa de HTTPS.'), { code: 'production_config' });
       }
     }
-    return { ok: true, data: (MOCK_MODE && !forceReal) ? await mockFn() : await realFn() };
+    // Production client: never execute local/demo data paths.
+    return { ok: true, data: await realFn() };
   } catch (e) {
     return { ok: false, error: { code: e.code || 'unknown', message: e.message || 'Ocorreu um erro. Tente novamente.', status: e.status || 0 } };
   }
@@ -198,7 +198,9 @@ export const createSubscription = ({ phone, role, idempotencyKey }) => call(
   () => mock.createSubscription35MT({ phone, role }),
   () => request('POST', '/paysuite-webhook?action=create-subscription', {
     baseUrl: PAYMENT_API_BASE_URL,
-    body: { role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
+    // The Central/TUPC edge resolves M-Pesa/e-Mola from this number on the server.
+    // Never trust the client-side operator label, but do send the wallet number.
+    body: { phone, role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
     headers: { 'Idempotency-Key': idempotencyKey || crypto.randomUUID() }
   }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE
 );
@@ -212,7 +214,20 @@ export const getSubscriptionStatus = userId => call(
 );
 
 /* ── Imóveis ── */
-export const listProperties = (filters = {}) => { const q = toQuery(filters); return call(() => mock.listProperties(q), () => request('GET', `/paysuite-webhook?action=casadireta-properties&${new URLSearchParams({ q: q.q || '', zone: q.zone || '', type: q.type || '', priceMin: q.priceMin || '', priceMax: q.priceMax || '', includeRented: filters.includeRented ? '1' : '0' }).toString()}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE); };
+export const listProperties = (filters = {}) => {
+  const q = toQuery(filters);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(q)) {
+    if (value === undefined || value === null || value === '') continue;
+    params.set(key, Array.isArray(value) ? value.join(',') : String(value));
+  }
+  return call(
+    () => mock.listProperties(q),
+    () => request('GET', `/paysuite-webhook?action=casadireta-properties&${params.toString()}`, { baseUrl: PAYMENT_API_BASE_URL }),
+    PAYMENT_API_BASE_URL,
+    TUPC_AUTH_MODE
+  );
+};
 export const listRoommates = () => call(() => [], () => request('GET', '/paysuite-webhook?action=casadireta-roommates', { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const createRoommatePost = data => call(() => data, () => request('POST', '/paysuite-webhook?action=casadireta-roommates', { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const deleteRoommatePost = id => call(() => ({ ok: true }), () => request('DELETE', `/paysuite-webhook?action=casadireta-roommate-delete&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
@@ -250,6 +265,3 @@ export const listSupportCases = () => call(() => [], () => request('GET', '/pays
 export const createSupportCase = data => call(() => data, () => request('POST', '/paysuite-webhook?action=casadireta-support-cases', { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const listSupportMessages = id => call(() => [], () => request('GET', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const sendSupportMessage = (id, data) => call(() => data, () => request('POST', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
-
-/* Só para demonstração (não existe no backend real): simular fim/reposição dos 15 dias grátis */
-export const dev = devTools;
