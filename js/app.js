@@ -115,7 +115,7 @@ function openSheet(title, body) {
     <div class="flex items-center justify-between mb-3"><h2 class="font-extrabold text-lg">${title}</h2><button data-act="close" class="w-9 h-9 grid place-items-center rounded-full bg-slate-100" aria-label="Fechar">${ic('x')}</button></div>${body}</div></div>`;
   icons();
 }
-let liveChatTimer = 0, voiceRecorder = null, voiceChunks = [];
+let liveChatTimer = 0, voiceRecorder = null, voiceChunks = [], audioUiTimer = 0, audioUiStarted = 0;
 function closeSheet() { if (liveChatTimer) { clearInterval(liveChatTimer); liveChatTimer = 0; } sheet.innerHTML = ''; }
 function setErr(id, msg) {
   const e = $('#e-' + id); if (e) e.textContent = msg || '';
@@ -548,6 +548,13 @@ function postForm(pre = {}) {
       <datalist id="hoods-list">${HOODS.map(h => `<option value="${h}">`).join('')}</datalist>
     </div>`);
 }
+function setRecordingUi(active, button) {
+  const panel = $('#chatRecording');
+  if (audioUiTimer) { clearInterval(audioUiTimer); audioUiTimer = 0; }
+  if (panel) panel.classList.toggle('hidden', !active), panel.classList.toggle('flex', active);
+  if (button) { button.classList.toggle('bg-red-100', active); button.classList.toggle('text-red-600', active); button.innerHTML = ic(active ? 'square' : 'mic'); button.setAttribute('aria-label', active ? 'Parar gravação' : 'Gravar áudio'); }
+  if (active) { audioUiStarted = Date.now(); const time = $('#chatRecordingTime'); audioUiTimer = setInterval(() => { const s = Math.floor((Date.now() - audioUiStarted) / 1000); if (time) time.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 250); }
+}
 async function chatSheet(r) {
   const u = me();
   L.interests[u.id] = [...new Set([...(L.interests[u.id] || []), r.id])]; save();
@@ -564,7 +571,8 @@ async function chatSheet(r) {
   openSheet(`Conversa com ${esc(first(r.name))}`, `
     <div id="chat" class="space-y-2 min-h-[120px] max-h-[40vh] overflow-y-auto" aria-live="polite">
       ${messages.length ? messages.map(chatBubble).join('') : `<div class="max-w-[85%] bg-slate-100 text-ink rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm" aria-label="Mensagem recebida"><span class="block text-[10px] font-bold text-slate-500 mb-0.5">${esc(first(r.name) || 'Colega')}</span>Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
-    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" value="Olá ${esc(first(r.name))}, tenho interesse em dividir. Podemos falar?" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio">${ic('mic')}</button><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
+    <div id="chatRecording" class="hidden mt-2 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm font-semibold items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span><span>A gravar</span><span id="chatRecordingTime" class="tabular-nums">0:00</span><span class="font-normal ml-auto">Toque no botão para parar</span></div>
+    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio">${ic('mic')}</button><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
   if (send) send.dataset.conversationId = conversationId;
@@ -897,10 +905,10 @@ const A = {
     if (voiceRecorder) { voiceRecorder.stop(); return; }
     if (window.CasaDiretaAudio) {
       const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
-      window.__nativeAudioError = message => { voiceRecorder = null; t.classList.remove('bg-red-100', 'text-red-600'); t.innerHTML = ic('mic'); toast('Não foi possível iniciar o gravador: ' + message); };
-      window.__nativeAudioStarted = () => toast('A gravar… toque novamente para parar');
+      window.__nativeAudioError = message => { voiceRecorder = null; setRecordingUi(false, t); toast('Não foi possível iniciar o gravador: ' + message); };
+      window.__nativeAudioStarted = () => { setRecordingUi(true, t); };
       window.__nativeAudioDone = async data => {
-        voiceRecorder = null; t.classList.remove('bg-red-100', 'text-red-600'); t.innerHTML = ic('mic');
+        voiceRecorder = null; setRecordingUi(false, t);
         const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: data, context: { roommateId: t.dataset.id, kind: 'audio' } });
         if (!sent.ok) return toast(sent.error.message);
         const box = $('#chat');
@@ -908,7 +916,7 @@ const A = {
         toast('Áudio enviado');
       };
       voiceRecorder = { stop: () => window.CasaDiretaAudio.stop() };
-      t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
+      setRecordingUi(true, t);
       window.CasaDiretaAudio.start();
       setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
       return;
@@ -921,11 +929,11 @@ const A = {
       let recorder = null;
       for (const type of formats) { try { if (!MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(type)) { recorder = new MediaRecorder(stream, { mimeType: type }); break; } } catch { /* tenta o formato seguinte */ } }
       voiceRecorder = recorder || new MediaRecorder(stream);
-      t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
+      setRecordingUi(true, t);
       const timeout = setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
       voiceRecorder.ondataavailable = e => { if (e.data.size) voiceChunks.push(e.data); };
       voiceRecorder.onstop = async () => {
-        clearTimeout(timeout); stream.getTracks().forEach(track => track.stop());
+        clearTimeout(timeout); stream.getTracks().forEach(track => track.stop()); setRecordingUi(false, t);
         const blob = new Blob(voiceChunks, { type: voiceRecorder?.mimeType || 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
         if (blob.size > 320_000) return toast('Áudio muito grande. Grave uma mensagem mais curta.');
         const reader = new FileReader(); reader.onload = async () => {
