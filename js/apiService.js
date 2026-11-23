@@ -40,6 +40,13 @@ import { PRICES, TYPES } from './utils.js';
 let authToken = null;
 export function setAuthToken(t) { authToken = t; setMockToken(t); }
 
+async function fetchWithTimeout(input, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try { return await fetch(input, { ...options, signal: ctrl.signal }); }
+  finally { clearTimeout(timer); }
+}
+
 async function request(method, path, { body, form, query, headers = {}, baseUrl = API_BASE_URL } = {}) {
   const url = new URL(baseUrl.replace(/\/$/, '') + path);
   if (query) for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, Array.isArray(v) ? v.join(',') : v);
@@ -88,7 +95,7 @@ function mapProperty(row, signed = {}) {
 }
 async function signedObject(path) {
   try {
-    const res = await fetch(`https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1/object/sign/casadireta-properties/${path}`, { method: 'POST', headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
+    const res = await fetchWithTimeout(`https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1/object/sign/casadireta-properties/${path}`, { method: 'POST', headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
     const data = await res.json();
     return res.ok && data?.signedURL ? `https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1${data.signedURL}` : null;
   } catch { return null; }
@@ -117,7 +124,7 @@ async function toBlob(x) {
     const bytes = Uint8Array.from(atob(payload), c => c.charCodeAt(0));
     return new Blob([bytes], { type: mime });
   }
-  return (await fetch(x)).blob();
+  return (await fetchWithTimeout(x)).blob();
 }
 async function propertyFormData(p) {
   const { ext = [], int = [], ...rest } = p, f = new FormData();
