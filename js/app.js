@@ -1032,7 +1032,7 @@ const H = {
     const phone = digits(v('phone')), pw = v('pw');
     if (!validPhone(phone)) return setErr('phone', 'Número inválido.');
     if (!pw) return setErr('pw', 'Escreva a sua senha.');
-    const o = await startOtp('login', phone, null, 'login', { password });     // entrar => sempre OTP
+    const o = await startOtp('login', phone, null, 'login', { password: pw }); // entrar => sempre OTP
     if (!o.ok) toast(o.error.message);
   },
   async forgot(form, v) {
