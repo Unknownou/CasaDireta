@@ -438,6 +438,7 @@ function card(l, u) {
       ${badgeVerified('absolute bottom-2.5 left-2.5', 'Verificado')}</div>
     <div class="p-3.5"><h3 class="font-bold leading-snug">${esc(l.title)}</h3>
       <p class="text-[13px] text-slate-500 mt-0.5 flex items-center gap-1">${ic('map-pin', 'w-3.5 h-3.5 shrink-0')}<span class="truncate">${esc(l.bairro)} · ${roomsTxt(l.rooms)}</span></p>
+      <p class="text-[11px] text-slate-400 mt-1">Publicado em ${fmtDate(l.created)}, ${fmtTime(l.created)}</p>
       <p class="mt-2 text-[24px] leading-none font-extrabold text-brand">${num(l.price)} MT<span class="text-xs font-semibold text-slate-500">/mês</span></p>
       <div class="mt-3 grid grid-cols-2 gap-2"><button data-act="open" data-id="${l.id}" class="py-2.5 rounded-xl bg-slate-100 font-bold text-sm">Ver detalhes</button><button data-act="contact" data-id="${l.id}" class="py-2.5 rounded-xl bg-brand-light text-white font-bold text-sm flex items-center justify-center gap-1.5">${ic('message-circle', 'w-4 h-4')}Contactar</button></div></div></article>`;
 }
@@ -500,7 +501,7 @@ function vListing(id) {
       <div><h1 class="text-xl font-extrabold leading-snug">${esc(l.title)}</h1>
         <p class="text-3xl font-extrabold text-brand mt-2">${num(l.price)} MT<span class="text-sm font-semibold text-slate-500">/mês</span></p></div>
       <section class="rounded-2xl bg-white border border-slate-200 px-4 py-1"><h2 class="font-extrabold pt-3 pb-1">Resumo</h2>
-        ${row('Tipo', TYPES[l.type])}${row('Quartos', roomsTxt(l.rooms))}${row('Zona', esc(l.bairro))}${row('Referência', esc(l.ref))}${row('Preço', `${num(l.price)} MT/mês`)}${row('Condições', esc(l.adv))}</section>
+        ${row('Tipo', TYPES[l.type])}${row('Quartos', roomsTxt(l.rooms))}${row('Zona', esc(l.bairro))}${row('Referência', esc(l.ref))}${row('Preço', `${num(l.price)} MT/mês`)}${row('Condições', esc(l.adv))}${row('Publicado em', `${fmtDate(l.created)}, ${fmtTime(l.created)}`)}</section>
       <section><h2 class="font-extrabold mb-1.5">Detalhes da casa</h2><p class="text-sm text-slate-700 leading-relaxed">${esc(l.desc || 'Sem descrição.')}</p>
         <div class="mt-3 flex flex-wrap gap-2">${l.am.map(k => `<span class="inline-flex items-center gap-1.5 bg-emerald-50 text-brand text-xs font-bold px-3 py-1.5 rounded-full">${ic(AM[k][0], 'w-4 h-4')}${AM[k][1]}</span>`).join('')}</div></section>
       <section><h2 class="font-extrabold mb-2">Regras da casa</h2><ul class="space-y-1.5 text-sm text-slate-700">${l.rules.map(r => `<li class="flex gap-2">${ic('check', 'w-4 h-4 text-brand mt-0.5 shrink-0')}${esc(r)}</li>`).join('')}</ul></section>
@@ -638,7 +639,7 @@ function vOwner() {
       <article class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex gap-3 ${l.rented ? 'opacity-80' : ''}">
         <img src="${coverOf(l)}" alt="" class="w-24 h-24 rounded-xl object-cover shrink-0 ${l.rented ? 'grayscale' : ''}" loading="lazy">
         <div class="flex-1 min-w-0"><button data-act="open" data-id="${l.id}" class="text-left font-bold leading-snug line-clamp-2">${esc(l.title)}</button>
-          <p class="text-brand font-extrabold">${num(l.price)} MT/mês</p><p class="text-[11px] text-slate-500">${roomsTxt(l.rooms)} · ${l.views} visitas · ${l.wa} contactos</p>
+          <p class="text-brand font-extrabold">${num(l.price)} MT/mês</p><p class="text-[11px] text-slate-500">${roomsTxt(l.rooms)} · ${l.views} visitas · ${l.wa} contactos</p><p class="text-[11px] text-slate-400 mt-0.5">Publicado em ${fmtDate(l.created)}, ${fmtTime(l.created)}</p>
           <div class="mt-1.5 flex items-center gap-2"><button role="switch" aria-checked="${!l.rented}" data-act="toggle-rent" data-id="${l.id}" class="switch" aria-label="Disponível"></button><span class="text-xs font-bold px-2 py-0.5 rounded-full ${l.rented ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}">${l.rented ? 'Já Alugado' : 'Disponível'}</span></div></div></article>`).join('')
       : empty('building', 'Ainda sem casas publicadas', 'Publique a sua primeira casa ou quarto e receba contactos diretos.', `<button data-act="add" class="mt-5 px-5 py-3 rounded-xl bg-brand text-white font-bold text-sm">Publicar Casa</button>`)}
   </div>`;
