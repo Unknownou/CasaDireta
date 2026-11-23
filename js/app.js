@@ -527,7 +527,7 @@ function roomCard(r, u, mineIds) {
     <p class="mt-3 text-[15px] leading-snug">Procuro colega para dividir <b>${r.type.toUpperCase()}</b> de <b>${mt(r.rent)}</b> no <b>${esc(r.bairro)}</b> <span class="text-brand font-extrabold">(${mt(r.share)} cada)</span></p>
     ${r.msg ? `<p class="mt-1.5 text-sm text-slate-600">“${esc(r.msg)}”</p>` : ''}
     <div class="mt-2.5 flex flex-wrap gap-1.5">${r.habits.map(h => `<span class="text-[11px] font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full">${esc(h)}</span>`).join('')}</div>
-    ${own ? `<p class="mt-3 text-xs font-bold text-brand">A sua publicação</p>` : `<button data-act="chat" data-id="${r.id}" class="mt-3 w-full py-3 rounded-xl font-bold text-sm ${sent ? 'bg-emerald-50 text-brand border border-emerald-200' : 'bg-brand text-white'}">${sent ? 'Interesse enviado · Abrir conversa' : 'Tenho Interesse / Conversar'}</button>`}</article>`;
+    ${own ? `<div class="mt-3 flex items-center gap-2"><span class="text-xs font-bold text-brand flex-1">A sua publicação</span><button data-act="room-delete" data-id="${r.id}" class="text-xs font-bold text-red-600 border border-red-200 rounded-lg px-2.5 py-1.5">Apagar publicação</button></div>` : `<button data-act="chat" data-id="${r.id}" class="mt-3 w-full py-3 rounded-xl font-bold text-sm ${sent ? 'bg-emerald-50 text-brand border border-emerald-200' : 'bg-brand text-white'}">${sent ? 'Interesse enviado · Abrir conversa' : 'Tenho Interesse / Conversar'}</button>`}</article>`;
 }
 function postForm(pre = {}) {
   const u = me();
@@ -855,11 +855,13 @@ const A = {
     if (parse().r === 'roommates') render(); else nav('roommates');
   },
   chat: t => { const r = store.roommates.find(x => x.id === t.dataset.id); if (r) chatSheet(r); },
-  'chat-send': t => {
+  'room-delete': async t => { if (!window.confirm('Apagar esta publicação de dividir renda?')) return; const r = await api.deleteRoommatePost(t.dataset.id); if (!r.ok) return toast(r.error.message); store.roommates = store.roommates.filter(x => x.id !== t.dataset.id); toast('Publicação apagada'); render(); },
+  'chat-send': async t => {
     const inp = $('#chatIn'), txt = inp.value.trim(), box = $('#chat'); if (!txt) return;
     const r = store.roommates.find(x => x.id === t.dataset.id), u = me();
     const conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
-    api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: txt, context: { roommateId: t.dataset.id } });
+    const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: txt, context: { roommateId: t.dataset.id } });
+    if (!sent.ok) return toast(sent.error.message);
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);
     inp.value = ''; box.scrollTop = box.scrollHeight;
   },
