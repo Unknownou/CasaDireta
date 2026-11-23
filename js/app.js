@@ -644,7 +644,7 @@ function vOwner() {
   </div>`;
 }
 
-const newDraft = u => ({ type: '', rooms: '', bairro: u.zone || '', ref: '', price: '', adv: ADV[0], am: [], desc: '', ext: [], int: [], phone: u.phone, agree: false });
+const newDraft = u => { const rawPhone = String(u.phone || '').replace(/\D/g, ''), phone = rawPhone.startsWith('258') ? rawPhone.slice(3) : rawPhone; return { type: '', rooms: '', bairro: u.zone || '', ref: '', price: '', adv: ADV[0], am: [], desc: '', ext: [], int: [], phone, agree: false }; };
 function vPublish() {
   const u = me();
   if (!ui.w) ui.w = newDraft(u);
