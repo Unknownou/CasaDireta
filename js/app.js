@@ -655,7 +655,7 @@ function vPublish() {
       <div class="mt-2"><label for="photo-${kind}" class="w-full min-h-12 inline-flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer hover:bg-emerald-50 active:bg-emerald-100">${ic('image-plus', 'w-5 h-5 shrink-0')}<span>Adicionar fotos</span></label><input id="photo-${kind}" type="file" accept="image/jpeg,image/png,image/webp" multiple data-kind="${kind}" aria-label="Selecionar fotos ${kind === 'int' ? 'do interior' : 'do exterior'}" class="photo-in sr-only">${err('ph-' + kind)}</div>`;
   ui.mount = () => { drawPhotos('ext'); drawPhotos('int'); };
   return `${top('Publicar Nova Casa', true)}
-  <div class="w-full max-w-2xl mx-auto p-4 sm:p-5 space-y-5 pb-28">
+    <div class="w-full max-w-2xl mx-auto p-4 sm:p-5 space-y-5 pb-8">
     <div><span class="text-sm font-bold">Tipo de casa</span><div class="mt-2 flex flex-wrap gap-2">${Object.entries(TYPES).map(([k, v]) => pickChip('w.type', k, v, w.type === k)).join('')}</div>${err('type')}</div>
     <div><span class="text-sm font-bold">Quantidade de quartos</span><div class="mt-2 flex gap-2">${['1', '2', '3', '4+'].map(v => pickChip('w.rooms', v, v, w.rooms === v)).join('')}</div>${err('rooms')}</div>
     <div><label class="text-sm font-bold" for="w-bairro">Zona / Bairro</label><input id="w-bairro" list="hoods-list" data-bind="w.bairro" class="field mt-1.5" value="${esc(w.bairro)}" placeholder="Ex.: Zimpeto">${err('w-bairro')}</div>
@@ -995,6 +995,7 @@ document.addEventListener('change', async e => {
     if (t.files.length > room) toast('Máximo 5 fotos por secção');
     for (const f of files) { const d = await readPhoto(f); if (d) ui.w[k].push(d); }
     t.value = ''; drawPhotos(k);
+    t.closest('.min-w-0')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } else if (t.id === 'avatarIn' && t.files[0]) {
     const d = await readPhoto(t.files[0], 320, .75, true);
     if (!d) return toast('Não foi possível ler a foto.');
