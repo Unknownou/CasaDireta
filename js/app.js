@@ -926,7 +926,7 @@ const A = {
     if ($('#pe-job')) { data.job = $('#pe-job').value.trim(); data.age = +$('#pe-age').value || ''; data.habits = $$('#pe-habits .chip[aria-pressed="true"]').map(c => c.textContent); }
     const done = withBusy(t), r = await api.updateUserProfile(data); done();
     if (!r.ok) { $('#e-pe').textContent = r.error.message; return; }
-    setUser(r.data); await refreshProperties(); closeSheet(); toast('Perfil atualizado'); render();
+    setUser(r.data); await refreshUser(); await refreshProperties(); closeSheet(); toast('Perfil atualizado e guardado'); render();
   },
   chpw: () => openSheet('Trocar senha', `<form data-submit="chpw" class="space-y-3" novalidate>
       <div><label class="text-xs font-bold" for="cp0">Senha atual</label><div class="mt-1">${pwField('cp0', 'Senha atual')}</div>${err('cp0')}</div>
