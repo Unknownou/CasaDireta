@@ -65,7 +65,11 @@ export function endSession() {
 }
 async function enterMain() {
   await refreshSubscription();
-  if (hasAccess()) { await refreshProperties(); await refreshNotifications(); }
+  // Dados secundários não podem bloquear o primeiro render da aplicação.
+  // Carregam em segundo plano para evitar spinner infinito quando uma API está lenta.
+  if (hasAccess()) {
+    void Promise.allSettled([refreshProperties(), refreshNotifications()]);
+  }
 }
 export async function refreshSubscription() {
   if (!store.user) return;
