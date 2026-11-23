@@ -6,5 +6,10 @@
   },
   "devDependencies": {
     "tailwindcss": "3.4.16"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3"
   }
 }
