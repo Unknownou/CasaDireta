@@ -895,6 +895,21 @@ const A = {
   },
   'chat-record': async t => {
     if (voiceRecorder) { voiceRecorder.stop(); return; }
+    if (window.CasaDiretaAudio) {
+      const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
+      window.__nativeAudioError = message => { voiceRecorder = null; t.classList.remove('bg-red-100', 'text-red-600'); t.innerHTML = ic('mic'); toast('Não foi possível iniciar o gravador: ' + message); };
+      window.__nativeAudioStarted = () => toast('A gravar… toque novamente para parar');
+      window.__nativeAudioDone = async data => {
+        voiceRecorder = null; t.classList.remove('bg-red-100', 'text-red-600'); t.innerHTML = ic('mic');
+        const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: data, context: { roommateId: t.dataset.id, kind: 'audio' } });
+        toast(sent.ok ? 'Áudio enviado' : sent.error.message);
+      };
+      voiceRecorder = { stop: () => window.CasaDiretaAudio.stop() };
+      t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
+      window.CasaDiretaAudio.start();
+      setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('O seu telefone não suporta gravação de áudio.');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
