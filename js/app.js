@@ -576,7 +576,7 @@ async function chatSheet(r) {
   const chatBubble = m => {
     const mine = m.fromUserId === u.id;
     const stamp = m.createdAt || m.created_at;
-    const body = m.audioUrl ? `<div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full ${mine ? 'bg-white/20' : 'bg-brand/10'} grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls preload="metadata" class="max-w-[190px] h-9"><source src="${esc(m.audioUrl)}"></audio></div>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
+    const body = m.audioUrl ? `<div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full ${mine ? 'bg-white/20' : 'bg-brand/10'} grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls playsinline preload="auto" class="max-w-[190px] h-9" aria-label="Reproduzir áudio"><source src="${esc(m.audioUrl)}" type="audio/mp4"></audio></div>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
     return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span>${body}${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
   };
   openSheet(`Conversa com ${esc(first(r.name))}`, `
