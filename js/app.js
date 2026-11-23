@@ -555,9 +555,14 @@ async function chatSheet(r) {
   L.chats = [...(L.chats || []).filter(c => c.conversationId !== conversationId), { conversationId, userId: u.id, otherUserId: r.userId || r.id, roommateId: r.id, name: r.name, bairro: r.bairro, updated: Date.now() }]; save();
   const existing = await api.listChatMessages(conversationId);
   const messages = existing.ok ? existing.data : [];
+  const chatBubble = m => {
+    const mine = m.fromUserId === u.id;
+    const stamp = m.createdAt || m.created_at;
+    return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span><span class="block whitespace-pre-wrap">${esc(m.text)}</span>${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
+  };
   openSheet(`Conversa com ${esc(first(r.name))}`, `
     <div id="chat" class="space-y-2 min-h-[120px] max-h-[40vh] overflow-y-auto" aria-live="polite">
-      ${messages.length ? messages.map(m => `<div class="${m.fromUserId === u.id ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm">${esc(m.text)}</div>`).join('') : `<div class="max-w-[85%] bg-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm">Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
+      ${messages.length ? messages.map(chatBubble).join('') : `<div class="max-w-[85%] bg-slate-100 text-ink rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm" aria-label="Mensagem recebida"><span class="block text-[10px] font-bold text-slate-500 mb-0.5">${esc(first(r.name) || 'Colega')}</span>Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
     <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" value="Olá ${esc(first(r.name))}, tenho interesse em dividir. Podemos falar?" aria-label="Mensagem"><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
@@ -567,7 +572,7 @@ async function chatSheet(r) {
     if (!box || !document.querySelector('[data-act="chat-send"]')) return;
     const fresh = await api.listChatMessages(conversationId);
     if (!fresh.ok) return;
-    const html = fresh.data.map(m => `<div class="${m.fromUserId === u.id ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm">${esc(m.text)}</div>`).join('');
+    const html = fresh.data.map(chatBubble).join('');
     if (box.innerHTML !== html) { const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 32; box.innerHTML = html || '<div class="text-sm text-slate-500">Ainda não há mensagens.</div>'; if (wasBottom) box.scrollTop = box.scrollHeight; }
   }, 2500);
 }
