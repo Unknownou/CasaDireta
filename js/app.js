@@ -310,7 +310,6 @@ function vPay() {
       <span class="w-10 h-10 rounded-full grid place-items-center ${m.c}">${ic('smartphone')}</span><div><b id="payOperatorName" class="block">${m.name}</b><span id="payOperatorHint" class="text-xs text-slate-600">${m.op} · detetada automaticamente pelo prefixo ${m.pre.join(' / ')}</span></div></div>
     <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm"><span class="font-bold">Número para pagamento:</span> ${fmtPhone(p.phone)}<br><span class="text-xs text-slate-600">A operadora é detetada automaticamente pelo prefixo do seu número.</span></div>
     <div class="mt-3">${primaryBtn(`Pagar ${PRICE} MT${locked ? ' e Continuar' : ' Agora'}`, 'pay')}</div>
-    <p class="mt-3 text-[11px] text-center text-slate-500">O pagamento é processado de forma segura pela operadora detetada e pelo PaySuite.</p>
     ${locked ? `<div class="mt-5 text-center"><button data-act="logout" class="text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button></div>` : ''}
   </div>`;
 }
@@ -603,6 +602,7 @@ function vProfile() {
     </div>`;
 }
 const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-relaxed">
+  <section><h3 class="font-extrabold text-ink">Responsabilidade da plataforma</h3><p>A CasaDireta é uma aplicação da <b>DeliGo Triunfal, Lda.</b>, responsável pela operação e manutenção do serviço. Todos os direitos sobre a aplicação, marca, código, conteúdos e funcionalidades são reservados à DeliGo Triunfal, Lda.</p></section>
   <section><h3 class="font-extrabold text-ink">1. 15 dias grátis e subscrição de 99 MT</h3>
     <p>Quando valida o seu número por SMS pela primeira vez, a conta ganha <b>15 dias grátis</b>, com acesso completo, tanto para <b>inquilinos</b> como para <b>proprietários</b>.</p>
     <p class="mt-1.5">Terminados os 15 dias, o acesso é <b>bloqueado automaticamente</b> até pagar a subscrição de <b>99 MT</b>, que dá <b>30 dias</b> de acesso completo. Não há renovação automática: só paga quando confirmar o pagamento no seu telemóvel.</p>
