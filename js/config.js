@@ -1,6 +1,6 @@
 /* Configuração do frontend CasaDireta.
    Para ligar ao backend real: MOCK_MODE = false e API_BASE_URL = URL do servidor. */
-export const MOCK_MODE = true;
+export const MOCK_MODE = false;
 export const API_BASE_URL = 'http://localhost:3000/api';
 // Rota financeira partilhada do TUPC/Central (não consome uma Edge Function nova).
 export const PAYMENT_API_BASE_URL = 'https://tpmsgvkdjzoidvyiwwfk.supabase.co/functions/v1';
