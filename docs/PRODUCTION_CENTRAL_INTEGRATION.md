@@ -80,6 +80,13 @@ Cada confirmação deve ser processada exclusivamente pelo backend Central/TUPC:
 O frontend nunca confirma pagamento, escreve no ledger ou escolhe a conta de
 receita.
 
+O Web Push CasaDireta usa uma chave VAPID pública no frontend e a chave privada
+somente como secret Supabase. A publicação de uma casa cria a notificação
+in-app e tenta entregá-la aos subscriptions Web Push ativos; subscriptions
+expirados são removidos automaticamente. A confirmação ponta a ponta ainda
+exige permitir notificações num navegador/dispositivo HTTPS e publicar uma
+casa de teste.
+
 O browser também não deve enviar diretamente o token de sessão CasaDireta ao
 TUPC. A troca de identidade deve ser feita no backend Central, com uma sessão
 central emitida para o cliente depois de autenticação e autorização.
