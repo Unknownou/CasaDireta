@@ -720,6 +720,11 @@ const readPhoto = (file, max = 900, q = .72, square = false) => new Promise(res 
 async function wizardPublish(btn) {
   if (!once('publish', 1500)) return;
   const w = ui.w; clearErrs(); let ok = true;
+  // Em edição, preservar o contacto já associado à conta mesmo quando veio
+  // com o prefixo internacional +258 ou quando o anúncio antigo não o tinha.
+  const normalizeLocalPhone = value => { const d = digits(value); return d.startsWith('258') ? d.slice(3) : d; };
+  w.phone = normalizeLocalPhone(w.phone);
+  if (ui.editingId && !validPhone(w.phone)) { const accountPhone = normalizeLocalPhone(me().phone); if (validPhone(accountPhone)) w.phone = accountPhone; }
   const bad = (id, m) => { setErr(id, m); ok = false; };
   if (!w.type) bad('type', 'Escolha o tipo de casa.');
   if (!w.rooms) bad('rooms', 'Escolha a quantidade de quartos.');
@@ -895,7 +900,7 @@ const A = {
   'receipt-next': () => { ui.receipt = null; nav(homeOf(me())); },
 
   add: () => nav('publish'),
-  'edit-property': t => { const l = store.properties.find(x => x.id === t.dataset.id); if (!l) return; ui.editingId = l.id; ui.w = { type: l.type, rooms: l.rooms >= 4 ? '4+' : String(l.rooms), bairro: l.bairro || '', ref: l.ref || '', price: l.price || '', adv: l.adv || ADV[0], am: [...(l.am || [])], desc: l.desc || '', ext: [...(l.ext || [])], int: [...(l.int || [])], phone: digits(l.phone || me().phone), agree: true }; nav('publish'); },
+  'edit-property': t => { const l = store.properties.find(x => x.id === t.dataset.id); if (!l) return; const normalizeLocalPhone = value => { const d = digits(value); return d.startsWith('258') ? d.slice(3) : d; }; const listingPhone = normalizeLocalPhone(l.phone); const accountPhone = normalizeLocalPhone(me().phone); ui.editingId = l.id; ui.w = { type: l.type, rooms: l.rooms >= 4 ? '4+' : String(l.rooms), bairro: l.bairro || '', ref: l.ref || '', price: l.price || '', adv: l.adv || ADV[0], am: [...(l.am || [])], desc: l.desc || '', ext: [...(l.ext || [])], int: [...(l.int || [])], phone: validPhone(listingPhone) ? listingPhone : accountPhone, agree: true }; nav('publish'); },
   'w-publish': wizardPublish,
   'photo-del': t => { ui.w[t.dataset.kind].splice(+t.dataset.i, 1); drawPhotos(t.dataset.kind); },
   'photo-cover': t => { const list = ui.w[t.dataset.kind], i = +t.dataset.i; if (i > 0) { const [photo] = list.splice(i, 1); list.unshift(photo); drawPhotos(t.dataset.kind); toast('Foto de capa escolhida'); } },
