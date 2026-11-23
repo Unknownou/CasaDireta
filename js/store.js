@@ -17,6 +17,7 @@ export const store = {
   ready: false,
   user: null,          // utilizador autenticado (com trialStartedAt, trialEndsAt, subscribedUntil, subscriptionStatus, payments)
   token: null,         // só existe depois do OTP confirmado
+  subscriptionChecked: false,
   pendingOtp: null,    // { purpose, phone, userId, sentAt, resendIn, verified, busy, resetToken, from }
   properties: [],      // cache de imóveis (detalhe, favoritos, minhas casas)
   propertiesLoading: false,
@@ -31,9 +32,10 @@ export const subscribe = fn => { listeners.add(fn); return () => listeners.delet
 const emit = () => listeners.forEach(fn => fn(store));
 
 export const getAccessStatus = () => accessStatus(store.user);
-export const hasAccess = () => !!store.user && subscribed(store.user);
+export const hasAccess = () => !!store.user && (!store.subscriptionChecked || subscribed(store.user));
 export function currentScreen() {
   if (!store.user || !store.token) return store.pendingOtp && !store.pendingOtp.verified ? 'OTP' : 'AUTH';
+  if (!store.subscriptionChecked) return 'APP_MAIN';
   return hasAccess() ? 'APP_MAIN' : 'SUBSCRIPTION_PAYWALL';
 }
 
@@ -59,12 +61,12 @@ export async function init() {
 
 /* Depois do OTP: guarda a sessão e carrega os dados */
 export async function startSession(user, token) {
-  store.user = user; store.token = token; store.pendingOtp = null;
+  store.user = user; store.token = token; store.subscriptionChecked = false; store.pendingOtp = null;
   api.setAuthToken(token); persist();
   await enterMain(); emit();
 }
 export function endSession() {
-  store.user = null; store.token = null; store.pendingOtp = null; store.properties = [];
+  store.user = null; store.token = null; store.subscriptionChecked = false; store.pendingOtp = null; store.properties = [];
   api.setAuthToken(null); persist(); emit();
 }
 async function enterMain() {
@@ -81,7 +83,7 @@ async function enterMain() {
 export async function refreshSubscription() {
   if (!store.user) return;
   const r = await api.getSubscriptionStatus(store.user.id);
-  if (r.ok) store.user = { ...store.user, ...r.data };
+  if (r.ok) { store.user = { ...store.user, ...r.data }; store.subscriptionChecked = true; }
   emit();
 }
 export async function refreshUser() {
