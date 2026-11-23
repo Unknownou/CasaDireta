@@ -19,6 +19,7 @@ export const mt = n => num(n) + ' MT';
 export const digits = s => String(s || '').replace(/\D/g, '');
 export const validPhone = p => /^(82|83|84|85|86|87)\d{7}$/.test(p);
 export const fmtPhone = p => { const d = String(p || '').replace(/\D/g, ''), local = (d.startsWith('258') ? d.slice(3) : d).slice(-9); return `+258 ${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5)}`; };
+export const mzPhone = p => { const d = String(p || '').replace(/\D/g, ''); const local = d.startsWith('258') ? d.slice(3) : d; return local ? `258${local.slice(-9)}` : ''; };
 export const first = n => String(n || '').trim().split(/\s+/)[0] || '';
 export const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 export const uid = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
