@@ -501,10 +501,10 @@ function vListing(id) {
       <div><h1 class="text-xl font-extrabold leading-snug">${esc(l.title)}</h1>
         <p class="text-3xl font-extrabold text-brand mt-2">${num(l.price)} MT<span class="text-sm font-semibold text-slate-500">/mês</span></p></div>
       <section class="rounded-2xl bg-white border border-slate-200 px-4 py-1"><h2 class="font-extrabold pt-3 pb-1">Resumo</h2>
-        ${row('Tipo', TYPES[l.type])}${row('Quartos', roomsTxt(l.rooms))}${row('Zona', esc(l.bairro))}${row('Referência', esc(l.ref))}${row('Preço', `${num(l.price)} MT/mês`)}${row('Condições', esc(l.adv))}${row('Publicado em', `${fmtDate(l.created)}, ${fmtTime(l.created)}`)}</section>
+        ${row('Tipo', TYPES[l.type] || l.type || 'Imóvel')}${row('Quartos', roomsTxt(l.rooms))}${row('Zona', esc(l.bairro))}${row('Referência', esc(l.ref))}${row('Preço', `${num(l.price)} MT/mês`)}${row('Condições', esc(l.adv || 'A combinar'))}${row('Publicado em', `${fmtDate(l.created)}, ${fmtTime(l.created)}`)}</section>
       <section><h2 class="font-extrabold mb-1.5">Detalhes da casa</h2><p class="text-sm text-slate-700 leading-relaxed">${esc(l.desc || 'Sem descrição.')}</p>
-        <div class="mt-3 flex flex-wrap gap-2">${l.am.map(k => `<span class="inline-flex items-center gap-1.5 bg-emerald-50 text-brand text-xs font-bold px-3 py-1.5 rounded-full">${ic(AM[k][0], 'w-4 h-4')}${AM[k][1]}</span>`).join('')}</div></section>
-      <section><h2 class="font-extrabold mb-2">Regras da casa</h2><ul class="space-y-1.5 text-sm text-slate-700">${l.rules.map(r => `<li class="flex gap-2">${ic('check', 'w-4 h-4 text-brand mt-0.5 shrink-0')}${esc(r)}</li>`).join('')}</ul></section>
+        <div class="mt-3 flex flex-wrap gap-2">${(l.am || []).filter(k => AM[k]).map(k => `<span class="inline-flex items-center gap-1.5 bg-emerald-50 text-brand text-xs font-bold px-3 py-1.5 rounded-full">${ic(AM[k][0], 'w-4 h-4')}${AM[k][1]}</span>`).join('')}</div></section>
+      <section><h2 class="font-extrabold mb-2">Regras da casa</h2><ul class="space-y-1.5 text-sm text-slate-700">${(l.rules || []).map(r => `<li class="flex gap-2">${ic('check', 'w-4 h-4 text-brand mt-0.5 shrink-0')}${esc(r)}</li>`).join('') || '<li class="text-sm text-slate-500">Sem regras adicionais.</li>'}</ul></section>
       ${l.rented || mine ? '' : `<section class="rounded-2xl bg-white border border-slate-200 p-4"><div class="flex items-center gap-3">${ownerAvatar(l, 'w-14 h-14')}<div><b class="block text-[15px]">${esc(l.owner)}</b>${badgeVerified('mt-1', 'Verificado')}</div></div>${contacts}</section>`}
       <div class="space-y-3">${actions}</div>
     </div>`;
@@ -642,7 +642,7 @@ function vOwner() {
         <img src="${coverOf(l)}" alt="" class="w-24 h-24 rounded-xl object-cover shrink-0 ${l.rented ? 'grayscale' : ''}" loading="lazy">
         <div class="flex-1 min-w-0"><button data-act="open" data-id="${l.id}" class="text-left font-bold leading-snug line-clamp-2">${esc(l.title)}</button>
           <p class="text-brand font-extrabold">${num(l.price)} MT/mês</p><p class="text-[11px] text-slate-500">${roomsTxt(l.rooms)} · ${l.views} visitas · ${l.wa} contactos</p><p class="text-[11px] text-slate-400 mt-0.5">Publicado em ${fmtDate(l.created)}, ${fmtTime(l.created)}</p>
-          <div class="mt-1.5 flex items-center gap-2"><button role="switch" aria-checked="${!l.rented}" data-act="toggle-rent" data-id="${l.id}" class="switch" aria-label="Disponível"></button><span class="text-xs font-bold px-2 py-0.5 rounded-full ${l.rented ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}">${l.rented ? 'Já Alugado' : 'Disponível'}</span></div></div></article>`).join('')
+          <div class="mt-1.5 flex items-center gap-2"><button role="switch" aria-checked="${!l.rented}" data-act="toggle-rent" data-id="${l.id}" class="switch" aria-label="Disponível"></button><span class="text-xs font-bold px-2 py-0.5 rounded-full ${l.rented ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}">${l.rented ? 'Já Alugado' : 'Disponível'}</span><button data-act="edit-property" data-id="${l.id}" class="ml-auto text-xs font-bold text-brand border border-brand rounded-lg px-2.5 py-1.5">Editar</button></div></div></article>`).join('')
       : empty('building', 'Ainda sem casas publicadas', 'Publique a sua primeira casa ou quarto e receba contactos diretos.', `<button data-act="add" class="mt-5 px-5 py-3 rounded-xl bg-brand text-white font-bold text-sm">Publicar Casa</button>`)}
   </div>`;
 }
@@ -657,7 +657,7 @@ function vPublish() {
       <div id="grid-${kind}" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
       <div class="mt-2"><label for="photo-${kind}" class="w-full min-h-12 inline-flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer hover:bg-emerald-50 active:bg-emerald-100">${ic('image-plus', 'w-5 h-5 shrink-0')}<span>Adicionar fotos</span></label><input id="photo-${kind}" type="file" accept="image/jpeg,image/png,image/webp" multiple data-kind="${kind}" aria-label="Selecionar fotos ${kind === 'int' ? 'do interior' : 'do exterior'}" class="photo-in sr-only">${err('ph-' + kind)}</div>`;
   ui.mount = () => { drawPhotos('ext'); drawPhotos('int'); };
-  return `${top('Publicar Nova Casa', true)}
+  return `${top(ui.editingId ? 'Editar Casa' : 'Publicar Nova Casa', true)}
     <div class="w-full max-w-2xl mx-auto p-4 sm:p-5 space-y-5 pb-8">
     <div><span class="text-sm font-bold">Tipo de casa</span><div class="mt-2 flex flex-wrap gap-2">${Object.entries(TYPES).map(([k, v]) => pickChip('w.type', k, v, w.type === k)).join('')}</div>${err('type')}</div>
     <div><span class="text-sm font-bold">Quantidade de quartos</span><div class="mt-2 flex gap-2">${['1', '2', '3', '4+'].map(v => pickChip('w.rooms', v, v, w.rooms === v)).join('')}</div>${err('rooms')}</div>
@@ -671,7 +671,7 @@ function vPublish() {
     ${photoBlock('int', 'Fotos do Interior (quarto, sala, WC)')}
     <div><label class="text-sm font-bold" for="w-phone">Contacto do proprietário (chamada e WhatsApp)</label><div class="mt-1.5">${phoneField('w-phone', w.phone, 'w.phone')}</div>${err('w-phone')}</div>
     <div><label class="flex gap-3 items-start text-sm bg-amber-50 border border-amber-300 rounded-xl p-3 cursor-pointer"><input type="checkbox" id="w-agree" data-bind="w.agree" ${w.agree ? 'checked' : ''} class="mt-1 w-5 h-5 accent-emerald-700"><span>Declaro ser o proprietário/responsável direto e <b>não cobrar taxa de visita</b>.</span></label>${err('agree')}</div>
-    ${primaryBtn('Publicar Casa', 'w-publish')}
+    ${primaryBtn(ui.editingId ? 'Guardar alterações' : 'Publicar Casa', 'w-publish')}
     <datalist id="hoods-list">${HOODS.map(h => `<option value="${h}">`).join('')}</datalist>
   </div>`;
 }
@@ -717,16 +717,17 @@ async function wizardPublish(btn) {
   if (!validPhone(digits(w.phone))) bad('w-phone', 'Número inválido (82–87 + 7 dígitos).');
   if (!w.agree) bad('agree', 'Tem de aceitar o termo de compromisso.');
   if (!ok) { focusFirstErr(); return; }
-  const done = withBusy(btn, 'A publicar...');
-  const r = await api.createProperty({ type: w.type, rooms: w.rooms === '4+' ? 4 : +w.rooms, bairro: w.bairro.trim(), ref: w.ref.trim(), price: +w.price, adv: w.adv, am: w.am, desc: w.desc.trim(), phone: digits(w.phone), ext: w.ext, int: w.int });
+  const done = withBusy(btn, ui.editingId ? 'A guardar...' : 'A publicar...');
+  const data = { type: w.type, rooms: w.rooms === '4+' ? 4 : +w.rooms, bairro: w.bairro.trim(), ref: w.ref.trim(), price: +w.price, adv: w.adv, am: w.am, desc: w.desc.trim(), phone: digits(w.phone), ext: w.ext, int: w.int };
+  const r = ui.editingId ? await api.updateProperty(ui.editingId, data) : await api.createProperty(data);
   done();
   if (!r.ok) {
     if (r.error.code === 'access_blocked') { await refreshUser(); return render(); }
     return toast(r.error.message);
   }
   await refreshProperties();
-  ui.published = r.data.id; ui.w = null;
-  nav('published');
+  const wasEditing = Boolean(ui.editingId); ui.published = r.data.id || ui.editingId; ui.w = null; ui.editingId = null;
+  nav(wasEditing ? 'owner' : 'published');
 }
 
 function vPublished() {
@@ -873,6 +874,7 @@ const A = {
   'receipt-next': () => { ui.receipt = null; nav(homeOf(me())); },
 
   add: () => nav('publish'),
+  'edit-property': t => { const l = store.properties.find(x => x.id === t.dataset.id); if (!l) return; ui.editingId = l.id; ui.w = { type: l.type, rooms: l.rooms >= 4 ? '4+' : String(l.rooms), bairro: l.bairro || '', ref: l.ref || '', price: l.price || '', adv: l.adv || ADV[0], am: [...(l.am || [])], desc: l.desc || '', ext: [...(l.ext || [])], int: [...(l.int || [])], phone: digits(l.phone || me().phone), agree: true }; nav('publish'); },
   'w-publish': wizardPublish,
   'photo-del': t => { ui.w[t.dataset.kind].splice(+t.dataset.i, 1); drawPhotos(t.dataset.kind); },
   'photo-cover': t => { const list = ui.w[t.dataset.kind], i = +t.dataset.i; if (i > 0) { const [photo] = list.splice(i, 1); list.unshift(photo); drawPhotos(t.dataset.kind); toast('Foto de capa escolhida'); } },
