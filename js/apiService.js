@@ -114,7 +114,15 @@ function toQuery(f = {}) {
 
 /* ── Autenticação + OTP (MozSMS) ── */
 export const registerUser = p => call(() => mock.registerUser(p), () => request('POST', '/auth/register', { body: p }));
-export const loginUser = p => call(() => mock.loginUser(p), () => request('POST', '/auth/login', { body: p }));
+export const loginUser = p => call(
+  () => mock.loginUser(p),
+  async () => {
+    const data = await request('POST', '/paysuite-webhook?action=casadireta-login', { baseUrl: PAYMENT_API_BASE_URL, body: { ...p, app_code: APP_CODE } });
+    const sourceUser = data.user || {};
+    return { ...data, token: data.token || data.session?.access_token, user: { id: sourceUser.id || data.user_id, name: sourceUser.user_metadata?.full_name || 'Utilizador CasaDireta', phone: p.phone, mode: data.role || sourceUser.user_metadata?.role || 'inquilino' } };
+  },
+  PAYMENT_API_BASE_URL, TUPC_AUTH_MODE
+);
 export const requestOtp = (phone, purpose, context = {}) => call(
   () => mock.requestOtp({ phone, purpose }),
   () => request('POST', `/paysuite-webhook?action=casadireta-request-otp`, { baseUrl: PAYMENT_API_BASE_URL, body: { ...context, phone, flow: purpose === 'register' ? 'signup' : purpose, app_code: APP_CODE } }),
