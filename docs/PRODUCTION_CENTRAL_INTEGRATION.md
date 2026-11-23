@@ -2,15 +2,14 @@
 
 ## Estado atual
 
-O frontend mantém `MOCK_MODE` para imóveis, conversas e notificações enquanto
-esses contratos ainda não estão publicados. Auth/OTP, restauração de sessão e
-subscrição já usam as rotas TUPC CasaDireta publicadas no `paysuite-webhook`
-(versão live 44).
+O frontend usa as rotas TUPC CasaDireta para auth/OTP, sessão, imóveis,
+conversas, notificações e subscrição. A função partilhada está na versão live
+46; `MOCK_MODE` continua disponível apenas como fallback local.
 
-## Bloqueio externo para ativar produção
+## Homologação pendente
 
-Para concluir a troca de todos os módulos falta publicar ou indicar um contrato
-Central/TUPC que cubra, para `app_code = casadireta`:
+Para homologar produção ainda é necessário testar uma conta e um dispositivo
+real com os seguintes contratos, já publicados para `app_code = casadireta`:
 
 1. sessão/auth e OTP MozSMS, incluindo os papéis `inquilino` e
    `proprietario`;
@@ -26,6 +25,13 @@ comportamento dos outros aplicativos. As rotas são:
 POST /functions/v1/paysuite-webhook?action=casadireta-request-otp
 POST /functions/v1/paysuite-webhook?action=casadireta-verify-otp
 GET  /functions/v1/paysuite-webhook?action=casadireta-me
+GET/POST /functions/v1/paysuite-webhook?action=casadireta-properties
+PATCH /functions/v1/paysuite-webhook?action=casadireta-property-update&id=:id
+POST /functions/v1/paysuite-webhook?action=casadireta-property-track&id=:id
+GET/POST /functions/v1/paysuite-webhook?action=casadireta-messages&id=:conversationId
+GET /functions/v1/paysuite-webhook?action=casadireta-notifications
+POST /functions/v1/paysuite-webhook?action=casadireta-notifications-read
+POST /functions/v1/paysuite-webhook?action=casadireta-push
 ```
 
 O segundo ramo cria/atualiza `core.profiles`, membership `casadireta` e wallet
