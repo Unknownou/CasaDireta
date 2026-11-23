@@ -163,7 +163,12 @@ export const createSubscription = ({ phone, role, idempotencyKey }) => call(
 );
 export const createSubscription35MT = createSubscription;
 export const getPaymentStatus = id => call(() => mock.getPaymentStatus(id), () => request('GET', `/paysuite-webhook?action=subscription-status&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE);
-export const getSubscriptionStatus = userId => call(() => mock.getSubscriptionStatus(userId), () => request('GET', '/subscriptions/status', { query: { userId } }));
+export const getSubscriptionStatus = userId => call(
+  () => mock.getSubscriptionStatus(userId),
+  () => request('GET', `/paysuite-webhook?action=subscription-status&user_id=${encodeURIComponent(userId || '')}`, { baseUrl: PAYMENT_API_BASE_URL }),
+  PAYMENT_API_BASE_URL,
+  TUPC_AUTH_MODE
+);
 
 /* ── Imóveis ── */
 export const listProperties = (filters = {}) => { const q = toQuery(filters); return call(() => mock.listProperties(q), () => request('GET', `/paysuite-webhook?action=casadireta-properties&${new URLSearchParams({ q: q.q || '', zone: q.zone || '', type: q.type || '', priceMin: q.priceMin || '', priceMax: q.priceMax || '', includeRented: filters.includeRented ? '1' : '0' }).toString()}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE); };
