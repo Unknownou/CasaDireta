@@ -185,7 +185,10 @@ export const listNotifications = (q = {}) => { const query = toQuery({ ...q, app
 export const markNotificationsRead = ids => call(() => mock.markNotificationsRead({ ids }), () => request('POST', '/paysuite-webhook?action=casadireta-notifications-read', { baseUrl: PAYMENT_API_BASE_URL, body: { ids } }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 
 /* ── Perfil e conta ── */
-export const updateUserProfile = d => call(() => mock.updateUserProfile(d), () => request('PATCH', '/paysuite-webhook?action=casadireta-profile', { baseUrl: PAYMENT_API_BASE_URL, body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const updateUserProfile = d => call(() => mock.updateUserProfile(d), async () => {
+  const data = await request('PATCH', '/paysuite-webhook?action=casadireta-profile', { baseUrl: PAYMENT_API_BASE_URL, body: d });
+  return data.user || data;
+}, PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const changePassword = d => call(() => mock.changePassword(d), () => request('POST', '/users/me/password', { body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const deleteUserAccount = (d = {}) => call(() => mock.deleteUserAccount(d), () => request('DELETE', '/users/me', { body: d }));
 

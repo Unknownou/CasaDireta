@@ -878,7 +878,6 @@ const A = {
     openSheet('Ajuda e suporte', `<div class="space-y-4">
       <p class="text-sm text-slate-600">Fale com a equipa da Central. O pedido fica associado ao seu perfil CasaDireta e pode receber respostas aqui.</p>
       <form data-submit="support" class="space-y-3" novalidate>
-        <div><label class="text-xs font-bold" for="support-subject">Assunto</label><input id="support-subject" class="field mt-1" required value="Ajuda CasaDireta"></div>
         <div><label class="text-xs font-bold" for="support-body">Mensagem</label><textarea id="support-body" class="field mt-1 min-h-28" required placeholder="Explique o que precisa..."></textarea></div>
         <p id="e-support" class="text-xs text-red-600 font-semibold min-h-[1rem]" role="alert"></p>
         <button class="w-full py-3.5 rounded-xl bg-brand text-white font-bold">Enviar pedido</button>
@@ -889,7 +888,9 @@ const A = {
   'support-case': async t => {
     const r = await api.listSupportMessages(t.dataset.id); if (!r.ok) return toast(r.error.message);
     const messages = r.data || [];
-    openSheet('Conversa com a Central', `<div class="space-y-3"><div class="space-y-2 max-h-72 overflow-y-auto">${messages.length ? messages.map(m => `<div class="rounded-xl p-3 ${m.author_type === 'staff' ? 'bg-slate-100' : 'bg-emerald-50'}"><p class="text-xs font-bold">${m.author_type === 'staff' ? 'Central DeliGo' : 'Você'}</p><p class="text-sm mt-1 whitespace-pre-wrap">${esc(m.body)}</p><p class="text-[11px] text-slate-400 mt-1">${fmtDate(m.created_at)} ${fmtTime(m.created_at)}</p></div>`).join('') : '<p class="text-sm text-slate-500">Sem mensagens ainda.</p>'}</div><form data-submit="support-reply" data-id="${esc(t.dataset.id)}" class="space-y-2"><textarea id="support-reply-body" class="field min-h-24" placeholder="Escreva uma resposta..."></textarea><button class="w-full py-3 rounded-xl bg-brand text-white font-bold">Enviar resposta</button></form></div>`);
+    const renderMessages = rows => rows.length ? rows.map(m => `<div class="rounded-xl p-3 ${m.author_type === 'staff' ? 'bg-slate-100' : 'bg-emerald-50'}"><p class="text-xs font-bold">${m.author_type === 'staff' ? 'Central DeliGo' : 'Você'}</p><p class="text-sm mt-1 whitespace-pre-wrap">${esc(m.body)}</p><p class="text-[11px] text-slate-400 mt-1">${fmtDate(m.created_at)} ${fmtTime(m.created_at)}</p></div>`).join('') : '<p class="text-sm text-slate-500">Sem mensagens ainda.</p>';
+    openSheet('Conversa com a Central', `<div class="space-y-3"><div id="support-chat-messages" class="space-y-2 max-h-72 overflow-y-auto">${renderMessages(messages)}</div><form data-submit="support-reply" data-id="${esc(t.dataset.id)}" class="space-y-2"><textarea id="support-reply-body" class="field min-h-24" placeholder="Escreva uma resposta..."></textarea><button class="w-full py-3 rounded-xl bg-brand text-white font-bold">Enviar resposta</button></form><p class="text-[11px] text-slate-500">A conversa atualiza automaticamente.</p></div>`);
+    timers.push(setInterval(async () => { const fresh = await api.listSupportMessages(t.dataset.id); const box = $('#support-chat-messages'); if (fresh.ok && box) box.innerHTML = renderMessages(fresh.data || []); }, 5000));
   },
   'edit-profile': () => {
     const u = me(), prop = u.mode === 'proprietario';
@@ -1006,11 +1007,10 @@ const fieldErr = (e, map = {}) => { const id = map[e.code]; if (id) { setErr(id,
 
 const H = {
   async support(form, v) {
-    const subject = v('support-subject').trim(), body = v('support-body').trim(), u = me();
-    if (subject.length < 3) return setErr('support', 'Indique um assunto.');
+    const body = v('support-body').trim(), u = me();
     if (body.length < 1) return setErr('support', 'Escreva a mensagem.');
     const button = form.querySelector('button'), done = withBusy(button);
-    const r = await api.createSupportCase({ requester_user_id: u.id, requester_name: u.name, requester_phone: u.phone, subject, description: body, category: 'general', priority: 'normal' });
+    const r = await api.createSupportCase({ requester_user_id: u.id, requester_name: u.name, requester_phone: u.phone, description: body, category: 'general', priority: 'normal' });
     done(); if (!r.ok) return toast(r.error.message); closeSheet(); toast('Pedido enviado à Central.');
   },
   async 'support-reply'(form, v) {
@@ -1080,9 +1080,9 @@ const H = {
     closeSheet(); toast('Obrigado. A denúncia foi enviada à equipa CasaDireta.');
   },
   async support(form) {
-    const subject = $('#support-subject').value.trim(), description = $('#support-body').value.trim();
+    const description = $('#support-body').value.trim();
     if (description.length < 10) { $('#e-support').textContent = 'Escreva pelo menos 10 caracteres.'; return; }
-    const r = await api.createSupportCase({ subject, description, category: 'geral' });
+    const r = await api.createSupportCase({ description, category: 'geral' });
     if (!r.ok) { $('#e-support').textContent = r.error.message; return; }
     closeSheet(); toast('Pedido enviado à Central.');
   }
