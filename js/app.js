@@ -552,7 +552,7 @@ function setRecordingUi(active, button) {
   const panel = $('#chatRecording');
   if (audioUiTimer) { clearInterval(audioUiTimer); audioUiTimer = 0; }
   if (panel) panel.classList.toggle('hidden', !active), panel.classList.toggle('flex', active);
-  if (button) { button.classList.toggle('bg-red-100', active); button.classList.toggle('text-red-600', active); button.innerHTML = ic(active ? 'square' : 'mic'); button.setAttribute('aria-label', active ? 'Parar gravação' : 'Gravar áudio'); }
+  if (button) { button.classList.toggle('bg-red-100', active); button.classList.toggle('text-red-600', active); button.innerHTML = `<span class="text-2xl leading-none" aria-hidden="true">${active ? '⏹' : '🎙️'}</span>`; button.setAttribute('aria-label', active ? 'Parar gravação' : 'Gravar áudio'); }
   if (active) { audioUiStarted = Date.now(); const time = $('#chatRecordingTime'); audioUiTimer = setInterval(() => { const s = Math.floor((Date.now() - audioUiStarted) / 1000); if (time) time.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 250); }
 }
 function setAudioDraft(data) {
@@ -585,7 +585,7 @@ async function chatSheet(r) {
       ${messages.length ? messages.map(chatBubble).join('') : `<div class="max-w-[85%] bg-slate-100 text-ink rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm" aria-label="Mensagem recebida"><span class="block text-[10px] font-bold text-slate-500 mb-0.5">${esc(first(r.name) || 'Colega')}</span>Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
     <div id="chatRecording" class="hidden mt-2 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm font-semibold items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span><span>A gravar</span><span id="chatRecordingTime" class="tabular-nums">0:00</span><span class="font-normal ml-auto">Toque no botão para parar</span></div>
     <div id="audioDraft" class="hidden mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-2 items-center gap-2"><span class="text-xs font-semibold text-brand">Áudio pronto</span><audio id="audioDraftPlayer" controls preload="metadata" class="h-9 flex-1"></audio></div>
-    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio">${ic('mic')}</button><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
+    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 h-12 shrink-0 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio"><span class="text-2xl leading-none" aria-hidden="true">🎙️</span></button><button data-act="chat-send" data-id="${r.id}" class="w-12 h-12 shrink-0 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
   if (send) send.dataset.conversationId = conversationId;
