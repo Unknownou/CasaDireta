@@ -899,13 +899,15 @@ const A = {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       voiceChunks = [];
-      voiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 24000 });
+      const formats = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+      const mimeType = formats.find(type => MediaRecorder.isTypeSupported?.(type)) || '';
+      voiceRecorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 });
       t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
       const timeout = setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
       voiceRecorder.ondataavailable = e => { if (e.data.size) voiceChunks.push(e.data); };
       voiceRecorder.onstop = async () => {
         clearTimeout(timeout); stream.getTracks().forEach(track => track.stop());
-        const blob = new Blob(voiceChunks, { type: 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
+        const blob = new Blob(voiceChunks, { type: voiceRecorder?.mimeType || mimeType || 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
         if (blob.size > 320_000) return toast('Áudio muito grande. Grave uma mensagem mais curta.');
         const reader = new FileReader(); reader.onload = async () => {
           const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
@@ -915,7 +917,7 @@ const A = {
         }; reader.readAsDataURL(blob);
       };
       voiceRecorder.start(); toast('A gravar… toque novamente para parar');
-    } catch { toast('Autorize o microfone para gravar um áudio.'); }
+    } catch (error) { toast(error?.name === 'NotAllowedError' ? 'Autorize o microfone para gravar um áudio.' : 'Este telefone não suporta o formato de áudio disponível.'); }
   },
   'saved-chats': () => openSavedChats(),
   'saved-chat-open': t => { const post = store.roommates.find(r => r.id === t.dataset.roommateId); const savedChat = (L.chats || []).find(c => c.roommateId === t.dataset.roommateId); if (!post && !savedChat) return toast('Esta conversa já não está disponível.'); closeSheet(); chatSheet(post || { id: savedChat.roommateId, userId: savedChat.otherUserId, name: savedChat.name || 'Colega', bairro: savedChat.bairro || '', share: 0 }); },
