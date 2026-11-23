@@ -573,10 +573,11 @@ async function chatSheet(r) {
   L.chats = [...(L.chats || []).filter(c => c.conversationId !== conversationId), { conversationId, userId: u.id, otherUserId: r.userId || r.id, roommateId: r.id, name: r.name, bairro: r.bairro, updated: Date.now() }]; save();
   const existing = await api.listChatMessages(conversationId);
   const messages = existing.ok ? existing.data : [];
+  let lastChatSignature = messages.map(m => `${m.id}:${m.created || m.createdAt || ''}:${m.text || ''}:${m.context?.audioPath || ''}`).join('|');
   const chatBubble = m => {
     const mine = m.fromUserId === u.id;
     const stamp = m.createdAt || m.created_at;
-    const body = m.audioUrl ? `<div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full ${mine ? 'bg-white/20' : 'bg-brand/10'} grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls playsinline preload="auto" class="max-w-[190px] h-9" aria-label="Reproduzir áudio"><source src="${esc(m.audioUrl)}" type="audio/mp4"></audio></div>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
+    const body = m.audioUrl ? `<div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full ${mine ? 'bg-white/20' : 'bg-brand/10'} grid place-items-center text-lg" aria-label="Mensagem de áudio">🎙️</span><audio controls playsinline preload="auto" class="max-w-[190px] h-9" aria-label="Reproduzir áudio"><source src="${esc(m.audioUrl)}" type="audio/mp4"></audio></div>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
     return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span>${body}${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
   };
   openSheet(`Conversa com ${esc(first(r.name))}`, `
@@ -593,8 +594,8 @@ async function chatSheet(r) {
     if (!box || !document.querySelector('[data-act="chat-send"]')) return;
     const fresh = await api.listChatMessages(conversationId);
     if (!fresh.ok) return;
-    const html = fresh.data.map(chatBubble).join('');
-    if (box.innerHTML !== html) { const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 32; box.innerHTML = html || '<div class="text-sm text-slate-500">Ainda não há mensagens.</div>'; if (wasBottom) box.scrollTop = box.scrollHeight; }
+    const signature = fresh.data.map(m => `${m.id}:${m.created || m.createdAt || ''}:${m.text || ''}:${m.context?.audioPath || ''}`).join('|');
+    if (signature !== lastChatSignature) { lastChatSignature = signature; const html = fresh.data.map(chatBubble).join(''); const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 32; box.innerHTML = html || '<div class="text-sm text-slate-500">Ainda não há mensagens.</div>'; if (wasBottom) box.scrollTop = box.scrollHeight; }
   }, 2500);
 }
 function openSavedChats() {
