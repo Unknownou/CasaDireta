@@ -263,13 +263,15 @@ async function verifyOtp(code) {
 /* ───────────── Fim do período grátis / subscrição de 99 MT (PaySuite · M-Pesa / e-Mola) ───────────── */
 const METHODS = { mpesa: { name: 'M-Pesa', op: 'Vodacom', pre: ['84', '85'], c: 'bg-red-50 text-red-600' }, emola: { name: 'e-Mola', op: 'Movitel', pre: ['86', '87'], c: 'bg-orange-50 text-orange-600' } };
 const methodForPhone = phone => operatorForPhone(phone);
+const localAccountPhone = phone => { const d = digits(phone); return d.startsWith('258') ? d.slice(3) : d; };
 const redraw = () => { view.innerHTML = vPay(); icons(); };
 
 function vPay() {
   const u = me();
   const locked = currentScreen() === 'SUBSCRIPTION_PAYWALL';
-  if (!ui.pay) ui.pay = { method: methodForPhone(u.phone) || 'mpesa', phone: u.phone, status: 'idle', token: null, error: '' };
+  if (!ui.pay) ui.pay = { method: methodForPhone(u.phone) || 'mpesa', phone: localAccountPhone(u.phone), status: 'idle', token: null, error: '' };
   const p = ui.pay;
+  p.phone = localAccountPhone(p.phone || u.phone);
   const methodKey = METHODS[p.method] ? p.method : (methodForPhone(p.phone) || methodForPhone(u.phone) || 'mpesa');
   p.method = methodKey;
   const m = METHODS[methodKey];
@@ -315,7 +317,7 @@ function vPay() {
 }
 async function startPay() {
   const p = ui.pay;
-  const ph = digits(me().phone || p.phone);
+  const ph = localAccountPhone(me().phone || p.phone);
   clearErrs();
   if (!validPhone(ph)) return payFailed(p.token, 'O número da conta não é válido para pagamentos móveis. Atualize o seu perfil.');
   const detected = methodForPhone(ph);
