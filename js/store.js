@@ -8,11 +8,10 @@
  *   - sessão válida e accessStatus 'TRIAL_ACTIVE' | 'SUBSCRIBED_ACTIVE' . APP_MAIN
  */
 import * as api from './apiService.js';
-import { seedRoommates } from './mockBackend.js';
 import { subscribed, accessStatus } from './utils.js';
 
 const KEY = 'casadireta:client';
-const freshLocal = () => ({ favs: {}, interests: {}, contacts: {}, roommates: seedRoommates() });
+const freshLocal = () => ({ favs: {}, interests: {}, contacts: {}, roommates: [] });
 
 export const store = {
   ready: false,
@@ -43,6 +42,8 @@ export async function init() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (saved && saved.local) store.local = { ...freshLocal(), ...saved.local };
+    // Remove dados de demonstração/orfãos antes da entrada em produção.
+    store.local.roommates = (store.local.roommates || []).filter(r => r.userId);
     if (saved && saved.token) {
       api.setAuthToken(saved.token);
       const r = await api.getCurrentUser();
