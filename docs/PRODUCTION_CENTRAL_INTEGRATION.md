@@ -3,8 +3,9 @@
 ## Estado atual
 
 O frontend mantém `MOCK_MODE` para imóveis, conversas e notificações enquanto
-esses contratos ainda não estão publicados. Auth/OTP e subscrição já usam as
-rotas TUPC CasaDireta publicadas no `paysuite-webhook`.
+esses contratos ainda não estão publicados. Auth/OTP, restauração de sessão e
+subscrição já usam as rotas TUPC CasaDireta publicadas no `paysuite-webhook`
+(versão live 44).
 
 ## Bloqueio externo para ativar produção
 
@@ -24,11 +25,14 @@ comportamento dos outros aplicativos. As rotas são:
 ```text
 POST /functions/v1/paysuite-webhook?action=casadireta-request-otp
 POST /functions/v1/paysuite-webhook?action=casadireta-verify-otp
+GET  /functions/v1/paysuite-webhook?action=casadireta-me
 ```
 
 O segundo ramo cria/atualiza `core.profiles`, membership `casadireta` e wallet
-`casadireta:user:<auth_uid>`. A validação feita sem dados válidos retorna erros
-controlados; ainda falta homologar um SMS real com uma conta de teste autorizada.
+`casadireta:user:<auth_uid>`. O código OTP é armazenado apenas como hash e a
+password não é persistida no desafio. A validação feita sem dados válidos
+retorna erros controlados; ainda falta homologar um SMS real com uma conta de
+teste autorizada.
 
 ## Contrato de pagamento preparado
 
