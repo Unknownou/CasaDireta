@@ -109,7 +109,16 @@ function existingStoragePath(x) {
   if (!/^https?:\/\//i.test(x) && !x.startsWith('data:') && !x.startsWith('blob:')) return x;
   return null;
 }
-async function toBlob(x) { return typeof x === 'string' ? (await fetch(x)).blob() : x; }
+async function toBlob(x) {
+  if (x instanceof Blob) return x;
+  if (typeof x !== 'string') return x;
+  if (x.startsWith('data:')) {
+    const [header, payload] = x.split(',', 2), mime = header.match(/^data:([^;]+)/i)?.[1] || 'image/jpeg';
+    const bytes = Uint8Array.from(atob(payload), c => c.charCodeAt(0));
+    return new Blob([bytes], { type: mime });
+  }
+  return (await fetch(x)).blob();
+}
 async function propertyFormData(p) {
   const { ext = [], int = [], ...rest } = p, f = new FormData();
   for (const [k, v] of Object.entries(rest)) f.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
