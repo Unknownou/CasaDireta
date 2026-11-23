@@ -592,7 +592,7 @@ function vProfile() {
         ${prop ? '' : row('user', 'Perfil para dividir renda', u.age || u.job ? esc(`${u.age ? u.age + ' anos' : ''}${u.age && u.job ? ' · ' : ''}${u.job || ''}`) : 'Opcional')}
         ${row('pencil', 'Editar perfil', '', 'edit-profile')}</section>
       <section class="bg-white rounded-2xl border border-slate-100 px-4 py-1"><h2 class="font-extrabold pt-3 pb-1">Definições e segurança</h2>
-        ${row('camera', 'Alterar foto de perfil', '', 'pick-avatar')}${row('bell', 'Ativar notificações', '', 'enable-push')}${row('lock', 'Trocar senha', '', 'chpw')}${row('file-text', 'Termos e Condições / Privacidade', '', 'terms')}${row('repeat', `Alternar para Modo ${prop ? 'Inquilino' : 'Proprietário'}`, '', 'switch-mode')}${row('log-out', 'Sair', '', 'logout')}</section>
+        ${row('camera', 'Alterar foto de perfil', '', 'pick-avatar')}${row('bell', 'Ativar notificações', '', 'enable-push')}${row('life-buoy', 'Ajuda e suporte Central', '', 'support')}${row('lock', 'Trocar senha', '', 'chpw')}${row('file-text', 'Termos e Condições / Privacidade', '', 'terms')}${row('repeat', `Alternar para Modo ${prop ? 'Inquilino' : 'Proprietário'}`, '', 'switch-mode')}${row('log-out', 'Sair', '', 'logout')}</section>
       <section class="bg-white rounded-2xl border border-slate-100 p-4"><h2 class="font-extrabold mb-1">Histórico de pagamentos</h2>
         ${u.payments.length ? u.payments.map(p => `<div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-sm"><div><b class="block">Subscrição CasaDireta (30 dias)</b><span class="text-xs text-slate-500">${fmtDate(p.date)}, ${fmtTime(p.date)} · ${p.method} · ${p.ref}</span></div><b>${mt(p.amount)}</b></div>`).join('') : '<p class="text-sm text-slate-500 py-2">Ainda sem pagamentos. Está no período grátis.</p>'}</section>
       <button data-act="del-account" class="w-full py-3.5 rounded-xl border-2 border-red-200 text-red-600 font-bold flex items-center justify-center gap-2">${ic('trash-2', 'w-5 h-5')} Eliminar conta</button>
@@ -866,6 +866,12 @@ const A = {
     setUser(r.data); toast(`Modo ${next === 'proprietario' ? 'Proprietário' : 'Inquilino'}`); nav(homeOf(me()));
   },
   'pick-avatar': () => $('#avatarIn') && $('#avatarIn').click(),
+  support: () => openSheet('Ajuda e suporte', `<form data-submit="support" class="space-y-3" novalidate>
+      <p class="text-sm text-slate-600">Fale com a equipa Central. O pedido fica associado ao seu perfil CasaDireta.</p>
+      <div><label class="text-xs font-bold" for="support-subject">Assunto</label><input id="support-subject" class="field mt-1" required value="Ajuda CasaDireta"></div>
+      <div><label class="text-xs font-bold" for="support-body">Mensagem</label><textarea id="support-body" class="field mt-1 min-h-28" required placeholder="Explique o que precisa..."></textarea></div>
+      <p id="e-support" class="text-xs text-red-600 font-semibold min-h-[1rem]" role="alert"></p>
+      <button class="w-full py-3.5 rounded-xl bg-brand text-white font-bold">Enviar pedido</button></form>`),
   'edit-profile': () => {
     const u = me(), prop = u.mode === 'proprietario';
     openSheet('Editar perfil', `<div class="space-y-3">
@@ -1036,6 +1042,13 @@ const H = {
     const r = await api.reportProperty({ propertyId: form.dataset.id, reason });
     if (!r.ok) return toast(r.error.message);
     closeSheet(); toast('Obrigado. A denúncia foi enviada à equipa CasaDireta.');
+  },
+  async support(form) {
+    const subject = $('#support-subject').value.trim(), description = $('#support-body').value.trim();
+    if (description.length < 10) { $('#e-support').textContent = 'Escreva pelo menos 10 caracteres.'; return; }
+    const r = await api.createSupportCase({ subject, description, category: 'geral' });
+    if (!r.ok) { $('#e-support').textContent = r.error.message; return; }
+    closeSheet(); toast('Pedido enviado à Central.');
   }
 };
 document.addEventListener('submit', async e => {

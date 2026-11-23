@@ -170,9 +170,15 @@ export const listNotifications = (q = {}) => { const query = toQuery({ ...q, app
 export const markNotificationsRead = ids => call(() => mock.markNotificationsRead({ ids }), () => request('POST', '/paysuite-webhook?action=casadireta-notifications-read', { baseUrl: PAYMENT_API_BASE_URL, body: { ids } }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 
 /* ── Perfil e conta ── */
-export const updateUserProfile = d => call(() => mock.updateUserProfile(d), () => request('PATCH', '/users/me', { body: d }));
-export const changePassword = d => call(() => mock.changePassword(d), () => request('POST', '/users/me/password', { body: d }));
+export const updateUserProfile = d => call(() => mock.updateUserProfile(d), () => request('PATCH', '/paysuite-webhook?action=casadireta-profile', { baseUrl: PAYMENT_API_BASE_URL, body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const changePassword = d => call(() => mock.changePassword(d), () => request('POST', '/users/me/password', { body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const deleteUserAccount = (d = {}) => call(() => mock.deleteUserAccount(d), () => request('DELETE', '/users/me', { body: d }));
+
+/* Suporte partilhado com a Central/TUPC, disponível nos dois modos de perfil. */
+export const listSupportCases = () => call(() => [], () => request('GET', '/paysuite-webhook?action=casadireta-support-cases', { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const createSupportCase = data => call(() => data, () => request('POST', '/paysuite-webhook?action=casadireta-support-case', { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const listSupportMessages = id => call(() => [], () => request('GET', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const sendSupportMessage = (id, data) => call(() => data, () => request('POST', `/paysuite-webhook?action=casadireta-support-messages&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 
 /* Só para demonstração (não existe no backend real): simular fim/reposição dos 15 dias grátis */
 export const dev = devTools;
