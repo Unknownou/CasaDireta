@@ -190,7 +190,7 @@ export const updateUserProfile = d => call(() => mock.updateUserProfile(d), asyn
   return data.user || data;
 }, PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const changePassword = d => call(() => mock.changePassword(d), () => request('POST', '/users/me/password', { body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
-export const deleteUserAccount = (d = {}) => call(() => mock.deleteUserAccount(d), () => request('DELETE', '/users/me', { body: d }));
+export const deleteUserAccount = (d = {}) => call(() => mock.deleteUserAccount(d), () => request('DELETE', '/paysuite-webhook?action=casadireta-delete-account', { baseUrl: PAYMENT_API_BASE_URL, body: d }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 
 /* Suporte partilhado com a Central/TUPC, disponível nos dois modos de perfil. */
 export const listSupportCases = () => call(() => [], () => request('GET', '/paysuite-webhook?action=casadireta-support-cases', { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
