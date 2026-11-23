@@ -568,7 +568,8 @@ const accessBadge = u => {
 };
 function vProfile() {
   const u = me(), prop = u.mode === 'proprietario', s = accessStatus(u);
-  const last = u.payments[0];
+  const payments = Array.isArray(u.payments) ? u.payments : [];
+  const last = payments[0];
   const favs = (L.favs[u.id] || []).filter(id => store.properties.some(l => l.id === id)).length;
   const log = L.contacts[u.id] || [];
   const posts = L.roommates.filter(r => r.userId === u.id).length, sent = (L.interests[u.id] || []).length;
@@ -597,7 +598,7 @@ function vProfile() {
       <section class="bg-white rounded-2xl border border-slate-100 px-4 py-1"><h2 class="font-extrabold pt-3 pb-1">Definições e segurança</h2>
         ${row('camera', 'Alterar foto de perfil', '', 'pick-avatar')}${row('bell', 'Ativar notificações', '', 'enable-push')}${row('life-buoy', 'Ajuda e suporte Central', '', 'support')}${row('lock', 'Trocar senha', '', 'chpw')}${row('file-text', 'Termos e Condições / Privacidade', '', 'terms')}${row('repeat', `Alternar para Modo ${prop ? 'Inquilino' : 'Proprietário'}`, '', 'switch-mode')}${row('log-out', 'Sair', '', 'logout')}</section>
       <section class="bg-white rounded-2xl border border-slate-100 p-4"><h2 class="font-extrabold mb-1">Histórico de pagamentos</h2>
-        ${u.payments.length ? u.payments.map(p => `<div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-sm"><div><b class="block">Subscrição CasaDireta (30 dias)</b><span class="text-xs text-slate-500">${fmtDate(p.date)}, ${fmtTime(p.date)} · ${p.method} · ${p.ref}</span></div><b>${mt(p.amount)}</b></div>`).join('') : '<p class="text-sm text-slate-500 py-2">Ainda sem pagamentos. Está no período grátis.</p>'}</section>
+        ${payments.length ? payments.map(p => `<div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-sm"><div><b class="block">Subscrição CasaDireta (30 dias)</b><span class="text-xs text-slate-500">${fmtDate(p.date)}, ${fmtTime(p.date)} · ${p.method} · ${p.ref}</span></div><b>${mt(p.amount)}</b></div>`).join('') : '<p class="text-sm text-slate-500 py-2">Ainda sem pagamentos. Está no período grátis.</p>'}</section>
       <button data-act="del-account" class="w-full py-3.5 rounded-xl border-2 border-red-200 text-red-600 font-bold flex items-center justify-center gap-2">${ic('trash-2', 'w-5 h-5')} Eliminar conta</button>
     </div>`;
 }
