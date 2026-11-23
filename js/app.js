@@ -625,7 +625,7 @@ const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-re
 
 /* ───────────── Proprietário: Minhas Casas e Publicar ───────────── */
 function vOwner() {
-  const u = me(), mine = store.properties.filter(l => l.ownerId === u.id);
+  const u = me(), normalizePhone = v => String(v || '').replace(/\D/g, '').replace(/^258/, ''), mine = store.properties.filter(l => l.ownerId === u.id || (normalizePhone(l.phone) && normalizePhone(l.phone) === normalizePhone(u.phone)));
   const views = mine.reduce((a, l) => a + l.views, 0), wa = mine.reduce((a, l) => a + l.wa, 0);
   return `${top('Minhas Casas', false, accessBadge(u))}
   <div class="p-4 space-y-4 pb-28">
