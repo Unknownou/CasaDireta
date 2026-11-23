@@ -1,6 +1,6 @@
 /* app.js — camada de UI do CasaDireta (módulo ES).
    Dados: apiService.js · Estado e máquina de estados: store.js · Configuração: config.js */
-import { store, init, currentScreen, persist, startSession, endSession, refreshSubscription, refreshProperties, refreshNotifications, refreshUser, setUser, forgetLocalUser, resetAll } from './store.js';
+import { store, init, currentScreen, persist, startSession, endSession, refreshSubscription, refreshProperties, refreshNotifications, refreshRoommates, refreshUser, setUser, forgetLocalUser, resetAll } from './store.js';
 import * as api from './apiService.js';
 import { enablePushNotifications } from './notificationService.js';
 import { syncIdentity } from './tupc.js';
@@ -505,7 +505,7 @@ function vListing(id) {
 /* ───────────── Dividir renda ───────────── */
 function vRoommates() {
   const u = me(), mineIds = L.interests[u.id] || [];
-  const list = [...L.roommates].sort((a, b) => b.created - a.created);
+  const list = [...store.roommates].sort((a, b) => b.created - a.created);
   return `${top('Dividir renda', false)}
   <div class="p-4 space-y-4">
     <div class="rounded-2xl bg-gradient-to-br from-brand to-ink text-white p-4"><h2 class="font-extrabold text-lg leading-snug">Encontre colega para dividir a renda</h2><p class="text-sm text-emerald-100 mt-1">Casas T1 e T2 ficam muito mais baratas a dois ou a três.</p><button data-act="post-form" class="mt-3 px-4 py-2.5 rounded-xl bg-amber-500 text-ink font-bold text-sm flex items-center gap-1.5">${ic('plus', 'w-4 h-4')} Publicar a minha procura</button></div>
@@ -572,7 +572,7 @@ function vProfile() {
   const last = payments[0];
   const favs = (L.favs[u.id] || []).filter(id => store.properties.some(l => l.id === id)).length;
   const log = L.contacts[u.id] || [];
-  const posts = L.roommates.filter(r => r.userId === u.id).length, sent = (L.interests[u.id] || []).length;
+  const posts = store.roommates.filter(r => r.userId === u.id).length, sent = (L.interests[u.id] || []).length;
   const mine = store.properties.filter(l => l.ownerId === u.id);
   const row = (icon, label, val, act = '', extra = '') => `<button ${act ? `data-act="${act}" ${extra}` : 'disabled'} class="w-full flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 text-left"><span class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 grid place-items-center shrink-0">${ic(icon, 'w-4.5 h-4.5')}</span><span class="flex-1 text-sm font-semibold">${label}</span>${val ? `<span class="text-xs text-slate-500 font-semibold">${val}</span>` : ''}${act ? ic('chevron-right', 'w-4 h-4 text-slate-400') : ''}</button>`;
   const accessLine = s === 'SUBSCRIBED_ACTIVE'
@@ -801,8 +801,8 @@ const A = {
   },
   roomies: t => {
     const l = store.properties.find(x => x.id === t.dataset.id), u = me(), mineIds = L.interests[u.id] || [];
-    const near = L.roommates.filter(r => norm(l.bairro).includes(norm(r.bairro)) || l.type === r.type).slice(0, 4);
-    const list = near.length ? near : L.roommates.slice(0, 3);
+    const near = store.roommates.filter(r => norm(l.bairro).includes(norm(r.bairro)) || l.type === r.type).slice(0, 4);
+    const list = near.length ? near : store.roommates.slice(0, 3);
     openSheet('Colegas para dividir', `<p class="text-sm text-slate-600 mb-3">Jovens interessados em dividir renda. Se este imóvel é caro para si, divida.</p>
       <div class="space-y-3">${list.map(r => roomCard(r, u, mineIds)).join('')}</div>
       <button data-act="post-form" data-bairro="${esc(l.bairro)}" data-type="${['t1', 't3'].includes(l.type) ? l.type : 't2'}" data-rent="${l.price}" class="mt-4 w-full py-3.5 rounded-xl border-2 border-brand text-brand font-bold">Publicar o meu interesse neste imóvel</button>`);
@@ -836,14 +836,16 @@ const A = {
     const e = $('#e-pf');
     if (bairro.length < 3 || rent < 500 || what.length < 3 || age < 16) { e.textContent = 'Preencha bairro, renda, curso/trabalho e idade (mín. 16).'; return; }
     const people = +g('pf-people');
-    L.roommates.unshift({ id: 'r' + uid(), name: u.name, age, what, bairro, type: g('pf-type'), rent, people, share: Math.round(rent / people), habits: $$('#pf-habits .chip[aria-pressed="true"]').map(c => c.textContent), msg: g('pf-msg'), userId: u.id, created: Date.now() });
-    save(); closeSheet(); toast('Procura publicada!');
+    const data = { age, what, bairro, type: g('pf-type'), rent, people, habits: $$('#pf-habits .chip[aria-pressed="true"]').map(c => c.textContent), msg: g('pf-msg') };
+    const r = await api.createRoommatePost(data);
+    if (!r.ok) { e.textContent = r.error.message; return; }
+    store.roommates.unshift(r.data); closeSheet(); toast('Procura publicada!');
     if (parse().r === 'roommates') render(); else nav('roommates');
   },
-  chat: t => { const r = L.roommates.find(x => x.id === t.dataset.id); if (r) chatSheet(r); },
+  chat: t => { const r = store.roommates.find(x => x.id === t.dataset.id); if (r) chatSheet(r); },
   'chat-send': t => {
     const inp = $('#chatIn'), txt = inp.value.trim(), box = $('#chat'); if (!txt) return;
-    const r = L.roommates.find(x => x.id === t.dataset.id), u = me();
+    const r = store.roommates.find(x => x.id === t.dataset.id), u = me();
     const conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
     api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: txt, context: { roommateId: t.dataset.id } });
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);

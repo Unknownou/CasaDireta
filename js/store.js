@@ -20,6 +20,7 @@ export const store = {
   pendingOtp: null,    // { purpose, phone, userId, sentAt, resendIn, verified, busy, resetToken, from }
   properties: [],      // cache de imóveis (detalhe, favoritos, minhas casas)
   notifications: [],   // avisos de casas novas/perto e mensagens
+  roommates: [],
   local: freshLocal()  // dados só do cliente: favoritos, contactos, interesses, procuras de colega
 };
 
@@ -72,7 +73,7 @@ async function enterMain() {
   // Dados secundários não podem bloquear o primeiro render da aplicação.
   // Carregam em segundo plano para evitar spinner infinito quando uma API está lenta.
   if (hasAccess()) {
-    void Promise.allSettled([refreshProperties(), refreshNotifications()]);
+    void Promise.allSettled([refreshProperties(), refreshNotifications(), refreshRoommates()]);
   }
 }
 export async function refreshSubscription() {
@@ -89,6 +90,10 @@ export async function refreshProperties() {
   const r = await api.listProperties({ includeRented: true });
   if (r.ok) store.properties = r.data;
   emit();
+}
+export async function refreshRoommates() {
+  const r = await api.listRoommates();
+  if (r.ok) store.roommates = r.data || [];
 }
 export async function refreshNotifications() {
   if (!store.user) return;
