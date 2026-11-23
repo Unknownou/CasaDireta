@@ -90,7 +90,7 @@ const top = (title, back = true, right = '') => `
     <h1 class="font-extrabold text-[16px] sm:text-[17px] flex-1 min-w-0 truncate ${back ? '' : 'pl-2'}">${title}</h1>${right}
   </header>`;
 const err = id => `<p id="e-${id}" class="text-xs text-red-600 font-medium mt-1 min-h-[1rem]" role="alert"></p>`;
-const phoneField = (id, val = '') => { const raw = String(val || '').replace(/\D/g, ''), local = raw.startsWith('258') ? raw.slice(3) : raw; return `<div class="field-wrap" id="w-${id}"><span class="prefix">+258</span><input id="${id}" type="tel" inputmode="numeric" autocomplete="tel-national" data-digits placeholder="84 123 4567" value="${esc(local.slice(-9))}" aria-label="Número de telemóvel"></div>`; };
+const phoneField = (id, val = '', bind = '') => { const raw = String(val || '').replace(/\D/g, ''), local = raw.startsWith('258') ? raw.slice(3) : raw, binding = bind ? ` data-bind="${bind}"` : ''; return `<div class="field-wrap" id="w-${id}"><span class="prefix">+258</span><input id="${id}" type="tel" inputmode="numeric" autocomplete="tel-national" data-digits${binding} placeholder="84 123 4567" value="${esc(local.slice(-9))}" aria-label="Número de telemóvel"></div>`; };
 const pwField = (id, ph = 'Senha', ac = 'current-password') => `<div class="field-wrap" id="w-${id}"><input id="${id}" type="password" autocomplete="${ac}" placeholder="${ph}" aria-label="${ph}"><button type="button" data-act="eye" data-target="${id}" class="px-3 text-slate-500" aria-label="Mostrar ou ocultar senha">${ic('eye')}</button></div>`;
 const heart = (id, on, cls = '') => `<button data-act="fav" data-id="${id}" class="w-9 h-9 rounded-full bg-white/95 shadow grid place-items-center ${cls}" aria-label="${on ? 'Remover dos favoritos' : 'Guardar nos favoritos'}" aria-pressed="${on}">${ic('heart', on ? 'w-5 h-5 fill-red-500 text-red-500' : 'w-5 h-5 text-slate-700')}</button>`;
 const badgeVerified = (c = '', t = 'Proprietário Verificado') => `<span class="inline-flex items-center gap-1 bg-amber-500 text-ink text-[11px] font-bold px-2 py-1 rounded-full ${c}">${ic('badge-check', 'w-3.5 h-3.5')}${t}</span>`;
@@ -666,7 +666,7 @@ function vPublish() {
     <div><label class="text-sm font-bold" for="w-desc">Detalhes / Descrição da casa</label><textarea id="w-desc" data-bind="w.desc" rows="3" maxlength="300" class="field mt-1.5" placeholder="Ex.: Quarto arejado, rua calma, sem barulho depois das 22h.">${esc(w.desc)}</textarea>${err('w-desc')}</div>
     ${photoBlock('ext', 'Fotos do Exterior (fachada, quintal, rua)')}
     ${photoBlock('int', 'Fotos do Interior (quarto, sala, WC)')}
-    <div><label class="text-sm font-bold" for="w-phone">Contacto do proprietário (chamada e WhatsApp)</label><div class="mt-1.5">${phoneField('w-phone', w.phone)}</div>${err('w-phone')}</div>
+    <div><label class="text-sm font-bold" for="w-phone">Contacto do proprietário (chamada e WhatsApp)</label><div class="mt-1.5">${phoneField('w-phone', w.phone, 'w.phone')}</div>${err('w-phone')}</div>
     <div><label class="flex gap-3 items-start text-sm bg-amber-50 border border-amber-300 rounded-xl p-3 cursor-pointer"><input type="checkbox" id="w-agree" data-bind="w.agree" ${w.agree ? 'checked' : ''} class="mt-1 w-5 h-5 accent-emerald-700"><span>Declaro ser o proprietário/responsável direto e <b>não cobrar taxa de visita</b>.</span></label>${err('agree')}</div>
     ${primaryBtn('Publicar Casa', 'w-publish')}
     <datalist id="hoods-list">${HOODS.map(h => `<option value="${h}">`).join('')}</datalist>
