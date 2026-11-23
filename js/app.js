@@ -829,7 +829,7 @@ const A = {
     setPath(ui, t.dataset.group, t.dataset.val);
     $$(`[data-act="pick"][data-group="${t.dataset.group}"]`).forEach(b => b.setAttribute('aria-pressed', b === t));
   },
-  'post-save': () => {
+  'post-save': async () => {
     if (!once('post')) return;
     const u = me(), g = id => $('#' + id).value.trim();
     const bairro = g('pf-bairro'), rent = +g('pf-rent'), what = g('pf-what'), age = +g('pf-age');
