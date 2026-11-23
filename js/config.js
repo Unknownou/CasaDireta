@@ -11,7 +11,7 @@ export const REAL_PAYMENT_MODE = true;
 export const TUPC_BASE_URL = '';
 export const APP_CODE = 'casadireta';
 export const SUBSCRIPTION_PLAN_ID = 'casadireta_monthly_99_mzn';
-export const PUSH_VAPID_PUBLIC_KEY = '';
+export const PUSH_VAPID_PUBLIC_KEY = 'BOLc88R06yddYZNusFNmAOHcWkv1OjBg1B6isDF7UjfBysX3l66DhMR6HfBKWBz_cG2hoJHX9vI7PH1fp13s-5w';
 export const REQUEST_TIMEOUT_MS = 15000;
 
 export const SUBSCRIPTION_PRICE_MT = 99;   // valor fixo (PaySuite: M-Pesa / e-Mola)
