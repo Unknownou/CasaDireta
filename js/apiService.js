@@ -53,7 +53,8 @@ async function request(method, path, { body, form, query, headers = {}, baseUrl 
     let json = null; try { json = await res.json(); } catch (e) { /* sem corpo */ }
     if (!res.ok) {
       const code = (json && (json.code || json.error)) || 'http_' + res.status;
-      const message = (json && json.message) || (code === 'account_deleted' ? 'Esta conta não existe mais. Por favor, crie uma nova conta.' : 'Não foi possível concluir esta operação. Tente novamente.');
+      const messages = { account_deleted: 'Esta conta não existe mais. Por favor, crie uma nova conta.', otp_invalid: 'Código OTP incorreto. Verifique o SMS e tente novamente.', otp_expired: 'Este código OTP expirou. Peça um novo código.', otp_attempts_exceeded: 'Foram excedidas as tentativas. Peça um novo código.', auth_user_create_failed: 'Não foi possível criar a conta. Tente novamente ou use outro número.', mozesms_unavailable: 'Não foi possível enviar o SMS agora. Tente novamente em instantes.' };
+      const message = (json && json.message) || messages[code] || 'Não foi possível concluir esta operação. Tente novamente.';
       throw Object.assign(new Error(message), { code, status: res.status });
     }
     return json && 'data' in json ? json.data : json;
