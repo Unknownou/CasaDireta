@@ -676,7 +676,7 @@ function vPublish() {
 function drawPhotos(kind) {
   const g = $('#grid-' + kind); if (!g) return;
   const list = ui.w[kind];
-  g.innerHTML = list.map((p, i) => `<div class="relative aspect-square rounded-xl overflow-hidden bg-slate-200"><img src="${p}" alt="Miniatura ${i + 1}" class="w-full h-full object-cover"><button type="button" data-act="photo-del" data-kind="${kind}" data-i="${i}" class="absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/80 text-white grid place-items-center" aria-label="Remover foto">${ic('trash-2', 'w-3.5 h-3.5')}</button></div>`).join('')
+  g.innerHTML = list.map((p, i) => `<div class="relative aspect-square rounded-xl overflow-hidden bg-slate-200"><img src="${p}" alt="Miniatura ${i + 1}" class="w-full h-full object-cover"><span class="absolute bottom-1 left-1 ${i === 0 ? '' : 'hidden'} bg-brand text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Capa</span><button type="button" data-act="photo-cover" data-kind="${kind}" data-i="${i}" class="absolute bottom-1 right-1 ${i === 0 ? 'hidden' : ''} px-1.5 py-1 rounded bg-white/90 text-brand text-[10px] font-bold">Usar como capa</button><button type="button" data-act="photo-del" data-kind="${kind}" data-i="${i}" class="absolute top-1 right-1 w-7 h-7 rounded-full bg-ink/80 text-white grid place-items-center" aria-label="Remover foto">${ic('trash-2', 'w-3.5 h-3.5')}</button></div>`).join('')
     || `<div class="col-span-3 py-6 text-center text-sm text-slate-500 bg-slate-100 rounded-xl">Ainda sem fotos</div>`;
   $('#pcount-' + kind).textContent = `${list.length}/5`;
   icons();
@@ -872,6 +872,7 @@ const A = {
   add: () => nav('publish'),
   'w-publish': wizardPublish,
   'photo-del': t => { ui.w[t.dataset.kind].splice(+t.dataset.i, 1); drawPhotos(t.dataset.kind); },
+  'photo-cover': t => { const list = ui.w[t.dataset.kind], i = +t.dataset.i; if (i > 0) { const [photo] = list.splice(i, 1); list.unshift(photo); drawPhotos(t.dataset.kind); toast('Foto de capa escolhida'); } },
   'see-feed': async () => { const r = await api.updateUserProfile({ mode: 'inquilino' }); if (r.ok) setUser(r.data); ui.f = newFilters(); nav('home'); },
 
   'switch-mode': async () => {
