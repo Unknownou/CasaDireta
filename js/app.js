@@ -115,7 +115,7 @@ function openSheet(title, body) {
     <div class="flex items-center justify-between mb-3"><h2 class="font-extrabold text-lg">${title}</h2><button data-act="close" class="w-9 h-9 grid place-items-center rounded-full bg-slate-100" aria-label="Fechar">${ic('x')}</button></div>${body}</div></div>`;
   icons();
 }
-let liveChatTimer = 0;
+let liveChatTimer = 0, voiceRecorder = null, voiceChunks = [];
 function closeSheet() { if (liveChatTimer) { clearInterval(liveChatTimer); liveChatTimer = 0; } sheet.innerHTML = ''; }
 function setErr(id, msg) {
   const e = $('#e-' + id); if (e) e.textContent = msg || '';
@@ -558,12 +558,13 @@ async function chatSheet(r) {
   const chatBubble = m => {
     const mine = m.fromUserId === u.id;
     const stamp = m.createdAt || m.created_at;
-    return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span><span class="block whitespace-pre-wrap">${esc(m.text)}</span>${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
+    const body = m.audioUrl ? `<audio controls preload="metadata" class="max-w-full h-9"><source src="${esc(m.audioUrl)}" type="audio/webm"></audio>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
+    return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span>${body}${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
   };
   openSheet(`Conversa com ${esc(first(r.name))}`, `
     <div id="chat" class="space-y-2 min-h-[120px] max-h-[40vh] overflow-y-auto" aria-live="polite">
       ${messages.length ? messages.map(chatBubble).join('') : `<div class="max-w-[85%] bg-slate-100 text-ink rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm" aria-label="Mensagem recebida"><span class="block text-[10px] font-bold text-slate-500 mb-0.5">${esc(first(r.name) || 'Colega')}</span>Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
-    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" value="Olá ${esc(first(r.name))}, tenho interesse em dividir. Podemos falar?" aria-label="Mensagem"><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
+    <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" value="Olá ${esc(first(r.name))}, tenho interesse em dividir. Podemos falar?" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio">${ic('mic')}</button><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
   if (send) send.dataset.conversationId = conversationId;
@@ -891,6 +892,30 @@ const A = {
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);
     inp.value = ''; box.scrollTop = box.scrollHeight;
     L.chats = (L.chats || []).map(c => c.conversationId === conversationId ? { ...c, updated: Date.now() } : c); save();
+  },
+  'chat-record': async t => {
+    if (voiceRecorder) { voiceRecorder.stop(); return; }
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('O seu telefone não suporta gravação de áudio.');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceChunks = [];
+      voiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 24000 });
+      t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
+      const timeout = setTimeout(() => { if (voiceRecorder) voiceRecorder.stop(); }, 30_000);
+      voiceRecorder.ondataavailable = e => { if (e.data.size) voiceChunks.push(e.data); };
+      voiceRecorder.onstop = async () => {
+        clearTimeout(timeout); stream.getTracks().forEach(track => track.stop());
+        const blob = new Blob(voiceChunks, { type: 'audio/webm' }); voiceRecorder = null; voiceChunks = [];
+        if (blob.size > 320_000) return toast('Áudio muito grande. Grave uma mensagem mais curta.');
+        const reader = new FileReader(); reader.onload = async () => {
+          const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
+          const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: reader.result, context: { roommateId: t.dataset.id, kind: 'audio' } });
+          if (!sent.ok) return toast(sent.error.message);
+          toast('Áudio enviado');
+        }; reader.readAsDataURL(blob);
+      };
+      voiceRecorder.start(); toast('A gravar… toque novamente para parar');
+    } catch { toast('Autorize o microfone para gravar um áudio.'); }
   },
   'saved-chats': () => openSavedChats(),
   'saved-chat-open': t => { const post = store.roommates.find(r => r.id === t.dataset.roommateId); const savedChat = (L.chats || []).find(c => c.roommateId === t.dataset.roommateId); if (!post && !savedChat) return toast('Esta conversa já não está disponível.'); closeSheet(); chatSheet(post || { id: savedChat.roommateId, userId: savedChat.otherUserId, name: savedChat.name || 'Colega', bairro: savedChat.bairro || '', share: 0 }); },
