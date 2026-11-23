@@ -85,9 +85,9 @@ function renderChrome(r, u) {
 
 /* ───────────── Pequenos componentes ───────────── */
 const top = (title, back = true, right = '') => `
-  <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-100 px-3 h-14 flex items-center gap-1">
-    ${back ? `<button data-act="back" class="w-10 h-10 grid place-items-center rounded-full hover:bg-slate-100" aria-label="Voltar">${ic('arrow-left')}</button>` : ''}
-    <h1 class="font-extrabold text-[17px] flex-1 truncate ${back ? '' : 'pl-2'}">${title}</h1>${right}
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-100 px-2.5 sm:px-4 min-h-14 flex items-center gap-2">
+    ${back ? `<button data-act="back" class="inline-flex shrink-0 items-center gap-1.5 min-h-10 px-2.5 rounded-xl text-brand font-bold text-sm hover:bg-emerald-50 active:bg-emerald-100" aria-label="Voltar">${ic('arrow-left', 'w-5 h-5 shrink-0')}<span>Voltar</span></button>` : ''}
+    <h1 class="font-extrabold text-[16px] sm:text-[17px] flex-1 min-w-0 truncate ${back ? '' : 'pl-2'}">${title}</h1>${right}
   </header>`;
 const err = id => `<p id="e-${id}" class="text-xs text-red-600 font-medium mt-1 min-h-[1rem]" role="alert"></p>`;
 const phoneField = (id, val = '') => `<div class="field-wrap" id="w-${id}"><span class="prefix">+258</span><input id="${id}" type="tel" inputmode="numeric" autocomplete="tel-national" data-digits placeholder="84 123 4567" value="${esc(val)}" aria-label="Número de telemóvel"></div>`;
@@ -655,7 +655,7 @@ function vPublish() {
       <div class="mt-2"><label class="block text-center py-2.5 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer">${ic('image-plus', 'w-4 h-4 inline -mt-0.5')} Adicionar fotos<input type="file" accept="image/*" multiple data-kind="${kind}" class="photo-in sr-only"></label>${err('ph-' + kind)}</div>`;
   ui.mount = () => { drawPhotos('ext'); drawPhotos('int'); };
   return `${top('Publicar Nova Casa', true)}
-  <div class="p-5 space-y-5">
+  <div class="w-full max-w-2xl mx-auto p-4 sm:p-5 space-y-5 pb-28">
     <div><span class="text-sm font-bold">Tipo de casa</span><div class="mt-2 flex flex-wrap gap-2">${Object.entries(TYPES).map(([k, v]) => pickChip('w.type', k, v, w.type === k)).join('')}</div>${err('type')}</div>
     <div><span class="text-sm font-bold">Quantidade de quartos</span><div class="mt-2 flex gap-2">${['1', '2', '3', '4+'].map(v => pickChip('w.rooms', v, v, w.rooms === v)).join('')}</div>${err('rooms')}</div>
     <div><label class="text-sm font-bold" for="w-bairro">Zona / Bairro</label><input id="w-bairro" list="hoods-list" data-bind="w.bairro" class="field mt-1.5" value="${esc(w.bairro)}" placeholder="Ex.: Zimpeto">${err('w-bairro')}</div>
