@@ -122,8 +122,10 @@ async function toBlob(x) {
 async function propertyFormData(p) {
   const { ext = [], int = [], ...rest } = p, f = new FormData();
   for (const [k, v] of Object.entries(rest)) f.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
-  for (const [i, x] of ext.entries()) { const path = existingStoragePath(x); if (path) f.append('existing_exterior_paths', path); else f.append('photos_exterior', await toBlob(x), `exterior-${i}.jpg`); }
-  for (const [i, x] of int.entries()) { const path = existingStoragePath(x); if (path) f.append('existing_interior_paths', path); else f.append('photos_interior', await toBlob(x), `interior-${i}.jpg`); }
+  for (const [kind, items] of [['exterior', ext], ['interior', int]]) {
+    let newIndex = 0;
+    for (const [i, x] of items.entries()) { const path = existingStoragePath(x); if (path) { f.append(`existing_${kind}_paths`, path); f.append(`photo_order_${kind}`, `existing:${path}`); } else { f.append(`photos_${kind}`, await toBlob(x), `${kind}-${i}.jpg`); f.append(`photo_order_${kind}`, `new:${newIndex++}`); } }
+  }
   return f;
 }
 /* Filtros da UI -> parâmetros numéricos/neutros do backend */
