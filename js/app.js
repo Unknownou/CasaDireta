@@ -558,7 +558,7 @@ async function chatSheet(r) {
   const chatBubble = m => {
     const mine = m.fromUserId === u.id;
     const stamp = m.createdAt || m.created_at;
-    const body = m.audioUrl ? `<audio controls preload="metadata" class="max-w-full h-9"><source src="${esc(m.audioUrl)}" type="audio/webm"></audio>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
+    const body = m.audioUrl ? `<div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full ${mine ? 'bg-white/20' : 'bg-brand/10'} grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls preload="metadata" class="max-w-[190px] h-9"><source src="${esc(m.audioUrl)}"></audio></div>` : `<span class="block whitespace-pre-wrap">${esc(m.text)}</span>`;
     return `<div class="${mine ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 text-ink rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm" aria-label="${mine ? 'Mensagem enviada por si' : 'Mensagem recebida'}"><span class="block text-[10px] font-bold ${mine ? 'text-emerald-100' : 'text-slate-500'} mb-0.5">${mine ? 'Você' : esc(first(r.name) || 'Colega')}</span>${body}${stamp ? `<span class="block text-[10px] ${mine ? 'text-emerald-100' : 'text-slate-400'} text-right mt-1">${fmtTime(stamp)}</span>` : ''}</div>`;
   };
   openSheet(`Conversa com ${esc(first(r.name))}`, `
@@ -902,7 +902,10 @@ const A = {
       window.__nativeAudioDone = async data => {
         voiceRecorder = null; t.classList.remove('bg-red-100', 'text-red-600'); t.innerHTML = ic('mic');
         const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: data, context: { roommateId: t.dataset.id, kind: 'audio' } });
-        toast(sent.ok ? 'Áudio enviado' : sent.error.message);
+        if (!sent.ok) return toast(sent.error.message);
+        const box = $('#chat');
+        if (box) { box.insertAdjacentHTML('beforeend', `<div class="ml-auto bg-brand text-white rounded-2xl rounded-br-sm max-w-[85%] px-3.5 py-2.5 text-sm"><span class="block text-[10px] font-bold text-emerald-100 mb-0.5">Você</span><div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full bg-white/20 grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls preload="metadata" class="max-w-[190px] h-9"><source src="${esc(sent.data?.audioUrl || data)}"></audio></div><span class="block text-[10px] text-emerald-100 text-right mt-1">${fmtTime(Date.now())}</span></div>`); box.scrollTop = box.scrollHeight; }
+        toast('Áudio enviado');
       };
       voiceRecorder = { stop: () => window.CasaDiretaAudio.stop() };
       t.classList.add('bg-red-100', 'text-red-600'); t.innerHTML = ic('square'); t.setAttribute('aria-label', 'Parar gravação');
