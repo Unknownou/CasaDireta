@@ -3,7 +3,7 @@ export const PRICE = 99;
 export function operatorForPhone(phone = '') {
   const digitsOnly = String(phone).replace(/\D/g, '');
   const local = digitsOnly.startsWith('258') ? digitsOnly.slice(3) : digitsOnly;
-  if (/^(84|85)\d{7}$/.test(local)) return 'mpesa';
+  if (/^(82|83|84|85)\d{7}$/.test(local)) return 'mpesa';
   if (/^(86|87)\d{7}$/.test(local)) return 'emola';
   return null;
 }

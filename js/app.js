@@ -267,7 +267,7 @@ async function verifyOtp(code) {
 }
 
 /* ───────────── Fim do período grátis / subscrição de 99 MT (PaySuite · M-Pesa / e-Mola) ───────────── */
-const METHODS = { mpesa: { name: 'M-Pesa', op: 'Vodacom', pre: ['84', '85'], c: 'bg-red-50 text-red-600' }, emola: { name: 'e-Mola', op: 'Movitel', pre: ['86', '87'], c: 'bg-orange-50 text-orange-600' } };
+const METHODS = { mpesa: { name: 'M-Pesa', op: 'Vodacom', pre: ['82', '83', '84', '85'], c: 'bg-red-50 text-red-600' }, emola: { name: 'e-Mola', op: 'Movitel', pre: ['86', '87'], c: 'bg-orange-50 text-orange-600' } };
 const methodForPhone = phone => operatorForPhone(phone);
 const localAccountPhone = phone => { const d = digits(phone); return d.startsWith('258') ? d.slice(3) : d; };
 const redraw = () => { view.innerHTML = vPay(); icons(); };
