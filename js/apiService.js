@@ -51,7 +51,11 @@ async function request(method, path, { body, form, query, headers = {}, baseUrl 
       body: form || (body ? JSON.stringify(body) : undefined)
     });
     let json = null; try { json = await res.json(); } catch (e) { /* sem corpo */ }
-    if (!res.ok) throw Object.assign(new Error((json && json.message) || 'Erro no servidor. Tente novamente.'), { code: (json && json.code) || 'http_' + res.status, status: res.status });
+    if (!res.ok) {
+      const code = (json && (json.code || json.error)) || 'http_' + res.status;
+      const message = (json && json.message) || (code === 'account_deleted' ? 'Esta conta não existe mais. Por favor, crie uma nova conta.' : 'Não foi possível concluir esta operação. Tente novamente.');
+      throw Object.assign(new Error(message), { code, status: res.status });
+    }
     return json && 'data' in json ? json.data : json;
   } catch (e) {
     if (e.name === 'AbortError') throw Object.assign(new Error('A ligação está lenta. Tente novamente.'), { code: 'timeout' });

@@ -1036,7 +1036,7 @@ const H = {
     if (!validPhone(phone)) return setErr('phone', 'Número inválido.');
     if (!pw) return setErr('pw', 'Escreva a sua senha.');
     const r = await api.loginUser({ phone, password: pw });
-    if (!r.ok) return toast(r.error.message);
+    if (!r.ok) return toast(r.error.code === 'account_deleted' ? 'Esta conta não existe mais. Por favor, crie uma nova conta.' : r.error.message);
     await startSession(r.data.user, r.data.token);
     syncIdentity({ user: r.data.user }).catch(() => {});
     toast('Sessão iniciada');
