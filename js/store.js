@@ -19,6 +19,8 @@ export const store = {
   token: null,         // só existe depois do OTP confirmado
   pendingOtp: null,    // { purpose, phone, userId, sentAt, resendIn, verified, busy, resetToken, from }
   properties: [],      // cache de imóveis (detalhe, favoritos, minhas casas)
+  propertiesLoading: false,
+  propertiesError: '',
   notifications: [],   // avisos de casas novas/perto e mensagens
   roommates: [],
   local: freshLocal()  // dados só do cliente: favoritos, contactos, interesses, procuras de colega
@@ -87,8 +89,11 @@ export async function refreshUser() {
   if (r.ok) { store.user = r.data; emit(); }
 }
 export async function refreshProperties() {
+  store.propertiesLoading = true; store.propertiesError = ''; emit();
   const r = await api.listProperties({ includeRented: true });
   if (r.ok) store.properties = r.data;
+  else store.propertiesError = r.error?.message || 'Não foi possível carregar os anúncios.';
+  store.propertiesLoading = false;
   emit();
 }
 export async function refreshRoommates() {

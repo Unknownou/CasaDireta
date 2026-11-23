@@ -419,7 +419,7 @@ async function refreshFeed() {
   const u = me();
   if (!r.ok) {
     if (r.error.code === 'access_blocked') { await refreshUser(); return render(); }
-    feed.innerHTML = empty('search', 'Nenhuma casa encontrada', 'Ainda não há anúncios disponíveis. Tente novamente mais tarde.', `<button data-act="retry-feed" class="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-bold text-sm">Atualizar</button>`);
+    feed.innerHTML = empty('wifi-off', 'Não foi possível carregar os anúncios', 'Verifique a sua ligação à internet e tente novamente.', `<button data-act="retry-feed" class="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-bold text-sm">Tentar novamente</button>`);
     icons(); return;
   }
   const list = r.data;
@@ -627,6 +627,8 @@ const termsHtml = () => `<div class="space-y-4 text-sm text-slate-700 leading-re
 /* ───────────── Proprietário: Minhas Casas e Publicar ───────────── */
 function vOwner() {
   const u = me(), normalizePhone = v => String(v || '').replace(/\D/g, '').replace(/^258/, ''), mine = store.properties.filter(l => l.ownerId === u.id || (normalizePhone(l.phone) && normalizePhone(l.phone) === normalizePhone(u.phone)));
+  if (store.propertiesLoading && !store.properties.length) return `${top('Minhas Casas', false, accessBadge(u))}<div class="p-4"><div class="skeleton h-32 rounded-2xl"></div></div>`;
+  if (store.propertiesError && !store.properties.length) return `${top('Minhas Casas', false, accessBadge(u))}${empty('wifi-off', 'Não foi possível carregar as suas casas', 'Verifique a sua ligação à internet e tente novamente.', '<button data-act="retry-properties" class="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-bold text-sm">Tentar novamente</button>')}`;
   const views = mine.reduce((a, l) => a + l.views, 0), wa = mine.reduce((a, l) => a + l.wa, 0);
   return `${top('Minhas Casas', false, accessBadge(u))}
   <div class="p-4 space-y-4 pb-28">
@@ -866,6 +868,7 @@ const A = {
   pay: startPay,
   'pay-retry': () => { ui.pay.status = 'idle'; ui.pay.token = null; redraw(); },
   'retry-feed': () => refreshFeed(),
+  'retry-properties': () => refreshProperties(),
   'pay-cancel': () => { ui.pay.status = 'idle'; ui.pay.token = null; redraw(); toast('Pagamento cancelado'); },
   'receipt-next': () => { ui.receipt = null; nav(homeOf(me())); },
 
