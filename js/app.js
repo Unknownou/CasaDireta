@@ -115,7 +115,7 @@ function openSheet(title, body) {
     <div class="flex items-center justify-between mb-3"><h2 class="font-extrabold text-lg">${title}</h2><button data-act="close" class="w-9 h-9 grid place-items-center rounded-full bg-slate-100" aria-label="Fechar">${ic('x')}</button></div>${body}</div></div>`;
   icons();
 }
-let liveChatTimer = 0, voiceRecorder = null, voiceChunks = [], audioUiTimer = 0, audioUiStarted = 0;
+let liveChatTimer = 0, voiceRecorder = null, voiceChunks = [], voiceDraft = null, audioUiTimer = 0, audioUiStarted = 0;
 function closeSheet() { if (liveChatTimer) { clearInterval(liveChatTimer); liveChatTimer = 0; } sheet.innerHTML = ''; }
 function setErr(id, msg) {
   const e = $('#e-' + id); if (e) e.textContent = msg || '';
@@ -555,6 +555,17 @@ function setRecordingUi(active, button) {
   if (button) { button.classList.toggle('bg-red-100', active); button.classList.toggle('text-red-600', active); button.innerHTML = ic(active ? 'square' : 'mic'); button.setAttribute('aria-label', active ? 'Parar gravação' : 'Gravar áudio'); }
   if (active) { audioUiStarted = Date.now(); const time = $('#chatRecordingTime'); audioUiTimer = setInterval(() => { const s = Math.floor((Date.now() - audioUiStarted) / 1000); if (time) time.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 250); }
 }
+function setAudioDraft(data) {
+  voiceDraft = data;
+  const draft = $('#audioDraft'), player = $('#audioDraftPlayer');
+  if (draft) { draft.classList.remove('hidden'); draft.classList.add('flex'); }
+  if (player) { player.src = data; player.load(); }
+}
+function clearAudioDraft() {
+  voiceDraft = null;
+  const draft = $('#audioDraft'); if (draft) { draft.classList.add('hidden'); draft.classList.remove('flex'); }
+  const player = $('#audioDraftPlayer'); if (player) player.removeAttribute('src');
+}
 async function chatSheet(r) {
   const u = me();
   L.interests[u.id] = [...new Set([...(L.interests[u.id] || []), r.id])]; save();
@@ -572,6 +583,7 @@ async function chatSheet(r) {
     <div id="chat" class="space-y-2 min-h-[120px] max-h-[40vh] overflow-y-auto" aria-live="polite">
       ${messages.length ? messages.map(chatBubble).join('') : `<div class="max-w-[85%] bg-slate-100 text-ink rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm" aria-label="Mensagem recebida"><span class="block text-[10px] font-bold text-slate-500 mb-0.5">${esc(first(r.name) || 'Colega')}</span>Olá! Vi que também procura casa. Ainda precisa de colega? (${esc(r.bairro)}, ${mt(r.share)} cada)</div>`}</div>
     <div id="chatRecording" class="hidden mt-2 rounded-xl bg-red-50 text-red-700 px-3 py-2 text-sm font-semibold items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span><span>A gravar</span><span id="chatRecordingTime" class="tabular-nums">0:00</span><span class="font-normal ml-auto">Toque no botão para parar</span></div>
+    <div id="audioDraft" class="hidden mt-2 rounded-xl bg-emerald-50 border border-emerald-200 p-2 items-center gap-2"><span class="text-xs font-semibold text-brand">Áudio pronto</span><audio id="audioDraftPlayer" controls preload="metadata" class="h-9 flex-1"></audio></div>
     <div class="mt-3 flex gap-2"><input id="chatIn" class="field flex-1" placeholder="Escreva uma mensagem" aria-label="Mensagem"><button type="button" data-act="chat-record" data-id="${r.id}" class="w-12 rounded-xl border-2 border-brand text-brand grid place-items-center" aria-label="Gravar áudio">${ic('mic')}</button><button data-act="chat-send" data-id="${r.id}" class="w-12 rounded-xl bg-brand text-white grid place-items-center" aria-label="Enviar">${ic('send')}</button></div>
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
@@ -892,9 +904,16 @@ const A = {
   chat: t => { const r = store.roommates.find(x => x.id === t.dataset.id); if (r) chatSheet(r); },
   'room-delete': async t => { if (!window.confirm('Apagar esta publicação de dividir renda?')) return; const r = await api.deleteRoommatePost(t.dataset.id); if (!r.ok) return toast(r.error.message); store.roommates = store.roommates.filter(x => x.id !== t.dataset.id); toast('Publicação apagada'); render(); },
   'chat-send': async t => {
-    const inp = $('#chatIn'), txt = inp.value.trim(), box = $('#chat'); if (!txt) return;
+    const inp = $('#chatIn'), txt = inp.value.trim(), box = $('#chat');
     const r = store.roommates.find(x => x.id === t.dataset.id), u = me();
     const conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
+    if (voiceDraft) {
+      const audio = voiceDraft;
+      const sentAudio = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: audio, context: { roommateId: t.dataset.id, kind: 'audio' } });
+      if (!sentAudio.ok) return toast(sentAudio.error.message);
+      clearAudioDraft(); toast('Áudio enviado'); return;
+    }
+    if (!txt) return;
     const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: txt, context: { roommateId: t.dataset.id } });
     if (!sent.ok) return toast(sent.error.message);
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);
@@ -909,11 +928,7 @@ const A = {
       window.__nativeAudioStarted = () => { setRecordingUi(true, t); };
       window.__nativeAudioDone = async data => {
         voiceRecorder = null; setRecordingUi(false, t);
-        const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: data, context: { roommateId: t.dataset.id, kind: 'audio' } });
-        if (!sent.ok) return toast(sent.error.message);
-        const box = $('#chat');
-        if (box) { box.insertAdjacentHTML('beforeend', `<div class="ml-auto bg-brand text-white rounded-2xl rounded-br-sm max-w-[85%] px-3.5 py-2.5 text-sm"><span class="block text-[10px] font-bold text-emerald-100 mb-0.5">Você</span><div class="flex items-center gap-2 min-w-[210px]"><span class="w-9 h-9 rounded-full bg-white/20 grid place-items-center">${ic('mic', 'w-5 h-5')}</span><audio controls preload="metadata" class="max-w-[190px] h-9"><source src="${esc(sent.data?.audioUrl || data)}"></audio></div><span class="block text-[10px] text-emerald-100 text-right mt-1">${fmtTime(Date.now())}</span></div>`); box.scrollTop = box.scrollHeight; }
-        toast('Áudio enviado');
+        setAudioDraft(data); toast('Áudio gravado. Ouça e toque em Enviar.');
       };
       voiceRecorder = { stop: () => window.CasaDiretaAudio.stop() };
       setRecordingUi(true, t);
@@ -938,9 +953,7 @@ const A = {
         if (blob.size > 320_000) return toast('Áudio muito grande. Grave uma mensagem mais curta.');
         const reader = new FileReader(); reader.onload = async () => {
           const r = store.roommates.find(x => x.id === t.dataset.id), u = me(), conversationId = t.dataset.conversationId || [u.id, r?.userId || t.dataset.id].sort().join(':');
-          const sent = await api.sendChatMessage(conversationId, { toUserId: r?.userId || t.dataset.id, text: 'Mensagem de áudio', audioData: reader.result, context: { roommateId: t.dataset.id, kind: 'audio' } });
-          if (!sent.ok) return toast(sent.error.message);
-          toast('Áudio enviado');
+          setAudioDraft(reader.result); toast('Áudio gravado. Ouça e toque em Enviar.');
         }; reader.readAsDataURL(blob);
       };
       voiceRecorder.start(); toast('A gravar… toque novamente para parar');
