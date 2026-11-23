@@ -225,9 +225,9 @@ function vOtp() {
   return `<div class="p-6 text-center">
     <div class="w-16 h-16 mx-auto mt-4 rounded-full bg-emerald-50 text-brand grid place-items-center">${ic('message-circle', 'w-8 h-8')}</div>
     <h1 class="mt-4 text-xl font-extrabold">Introduza o código</h1>
-    <p class="mt-1.5 text-sm text-slate-600">Enviamos um código de 4 dígitos via SMS para<br><b class="text-ink">${fmtPhone(o.phone)}</b></p>
+    <p class="mt-1.5 text-sm text-slate-600">Enviamos um código de 6 dígitos via SMS para<br><b class="text-ink">${fmtPhone(o.phone)}</b></p>
     <button data-act="change-number" class="mt-1 text-sm font-bold text-brand underline">Alterar número</button>
-    <div id="otpRow" class="mt-6 flex justify-center gap-3">${[0, 1, 2, 3].map(i => `<input id="otp${i}" class="otp-input" inputmode="numeric" maxlength="1" autocomplete="${i ? 'off' : 'one-time-code'}" aria-label="Dígito ${i + 1}">`).join('')}</div>
+    <div id="otpRow" class="mt-6 flex justify-center gap-2">${[0, 1, 2, 3, 4, 5].map(i => `<input id="otp${i}" class="otp-input" inputmode="numeric" maxlength="1" autocomplete="${i ? 'off' : 'one-time-code'}" aria-label="Dígito ${i + 1}">`).join('')}</div>
     <p id="otpStatus" class="text-sm text-slate-600 mt-3 min-h-[1.25rem]" aria-live="polite"></p>
     <p id="e-otp" class="text-sm text-red-600 font-semibold min-h-[1.25rem]" role="alert"></p>
     <div class="mt-2">${primaryBtn('Confirmar Código', 'otp-confirm')}</div>
@@ -751,7 +751,7 @@ const A = {
     toast(r.ok ? 'Notificações ativadas.' : r.reason === 'vapid_key_required' ? 'Falta configurar a chave VAPID no backend.' : 'Este navegador não permite notificações push aqui.');
   },
 
-  'otp-confirm': () => { const code = [0, 1, 2, 3].map(k => $('#otp' + k).value).join(''); if (code.length < 4) { $('#e-otp').textContent = 'Introduza os 4 dígitos.'; return; } verifyOtp(code); },
+  'otp-confirm': () => { const code = [0, 1, 2, 3, 4, 5].map(k => $('#otp' + k).value).join(''); if (code.length < 6) { $('#e-otp').textContent = 'Introduza os 6 dígitos.'; return; } verifyOtp(code); },
   resend: async t => {
     if (t.disabled) return;
     const o = store.pendingOtp, r = await api.requestOtp(o.phone, o.purpose, o.context || {});
@@ -938,18 +938,18 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('paste', e => {
   if (!e.target.classList?.contains('otp-input')) return;
-  const d = digits(e.clipboardData.getData('text')).slice(0, 4); if (!d) return;
-  e.preventDefault(); [...d].forEach((c, i) => { $('#otp' + i).value = c; }); $('#otp' + Math.min(d.length, 3)).focus();
-  if (d.length === 4) setTimeout(() => verifyOtp(d), 120);
+  const d = digits(e.clipboardData.getData('text')).slice(0, 6); if (!d) return;
+  e.preventDefault(); [...d].forEach((c, i) => { $('#otp' + i).value = c; }); $('#otp' + Math.min(d.length, 5)).focus();
+  if (d.length === 6) setTimeout(() => verifyOtp(d), 120);
 });
 document.addEventListener('input', e => {
   const t = e.target;
   if (t.classList.contains('otp-input')) {
     t.value = t.value.replace(/\D/g, '').slice(-1);
     const i = +t.id.slice(3);
-    if (t.value && i < 3) $('#otp' + (i + 1)).focus();
-    const code = [0, 1, 2, 3].map(k => $('#otp' + k).value).join('');
-    if (code.length === 4) setTimeout(() => verifyOtp(code), 120);
+    if (t.value && i < 5) $('#otp' + (i + 1)).focus();
+    const code = [0, 1, 2, 3, 4, 5].map(k => $('#otp' + k).value).join('');
+    if (code.length === 6) setTimeout(() => verifyOtp(code), 120);
     return;
   }
   if (t.dataset && t.dataset.digits !== undefined) {
