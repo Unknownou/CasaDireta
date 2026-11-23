@@ -514,10 +514,11 @@ function vListing(id) {
 /* ───────────── Dividir renda ───────────── */
 function vRoommates() {
   const u = me(), mineIds = L.interests[u.id] || [];
+  const chats = (L.chats || []).filter(c => c.userId === u.id);
   const list = [...store.roommates].sort((a, b) => b.created - a.created);
   return `${top('Dividir renda', false)}
   <div class="p-4 space-y-4">
-    <div class="rounded-2xl bg-gradient-to-br from-brand to-ink text-white p-4"><h2 class="font-extrabold text-lg leading-snug">Encontre colega para dividir a renda</h2><p class="text-sm text-emerald-100 mt-1">Casas T1 e T2 ficam muito mais baratas a dois ou a três.</p><button data-act="post-form" class="mt-3 px-4 py-2.5 rounded-xl bg-amber-500 text-ink font-bold text-sm flex items-center gap-1.5">${ic('plus', 'w-4 h-4')} Publicar a minha procura</button></div>
+    <div class="rounded-2xl bg-gradient-to-br from-brand to-ink text-white p-4"><h2 class="font-extrabold text-lg leading-snug">Encontre colega para dividir a renda</h2><p class="text-sm text-emerald-100 mt-1">Casas T1 e T2 ficam muito mais baratas a dois ou a três.</p><div class="mt-3 flex flex-wrap gap-2"><button data-act="post-form" class="px-4 py-2.5 rounded-xl bg-amber-500 text-ink font-bold text-sm flex items-center gap-1.5">${ic('plus', 'w-4 h-4')} Publicar a minha procura</button>${chats.length ? `<button data-act="saved-chats" class="px-4 py-2.5 rounded-xl bg-white/15 text-white font-bold text-sm">${ic('message-circle', 'w-4 h-4')} Conversas (${chats.length})</button>` : ''}</div></div>
     ${list.map(r => roomCard(r, u, mineIds)).join('')}
   </div>`;
 }
@@ -550,6 +551,7 @@ async function chatSheet(r) {
   const u = me();
   L.interests[u.id] = [...new Set([...(L.interests[u.id] || []), r.id])]; save();
   const conversationId = [u.id, r.userId || r.id].sort().join(':');
+  L.chats = [...(L.chats || []).filter(c => c.conversationId !== conversationId), { conversationId, userId: u.id, otherUserId: r.userId || r.id, roommateId: r.id, name: r.name, bairro: r.bairro, updated: Date.now() }]; save();
   const existing = await api.listChatMessages(conversationId);
   const messages = existing.ok ? existing.data : [];
   openSheet(`Conversa com ${esc(first(r.name))}`, `
@@ -567,6 +569,10 @@ async function chatSheet(r) {
     const html = fresh.data.map(m => `<div class="${m.fromUserId === u.id ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm">${esc(m.text)}</div>`).join('');
     if (box.innerHTML !== html) { const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 32; box.innerHTML = html || '<div class="text-sm text-slate-500">Ainda não há mensagens.</div>'; if (wasBottom) box.scrollTop = box.scrollHeight; }
   }, 2500);
+}
+function openSavedChats() {
+  const chats = [...(L.chats || [])].sort((a, b) => b.updated - a.updated);
+  openSheet('Conversas guardadas', chats.length ? `<div class="divide-y divide-slate-100">${chats.map(c => `<button data-act="saved-chat-open" data-roommate-id="${esc(c.roommateId)}" class="w-full text-left py-3 flex items-center gap-3"><span class="w-10 h-10 rounded-full bg-emerald-100 text-brand grid place-items-center">${ic('message-circle')}</span><span class="flex-1"><b class="block text-sm">${esc(c.name || 'Colega')}</b><span class="text-xs text-slate-500">${esc(c.bairro || 'Dividir renda')}</span></span>${ic('chevron-right', 'w-4 h-4 text-slate-400')}</button>`).join('')}</div>` : '<p class="text-sm text-slate-500 py-8 text-center">Ainda não há conversas guardadas.</p>');
 }
 
 /* ───────────── Favoritos ───────────── */
@@ -873,7 +879,10 @@ const A = {
     if (!sent.ok) return toast(sent.error.message);
     box.insertAdjacentHTML('beforeend', `<div class="ml-auto max-w-[85%] bg-brand text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm">${esc(txt)}</div>`);
     inp.value = ''; box.scrollTop = box.scrollHeight;
+    L.chats = (L.chats || []).map(c => c.conversationId === conversationId ? { ...c, updated: Date.now() } : c); save();
   },
+  'saved-chats': () => openSavedChats(),
+  'saved-chat-open': t => { const post = store.roommates.find(r => r.id === t.dataset.roommateId); const savedChat = (L.chats || []).find(c => c.roommateId === t.dataset.roommateId); if (!post && !savedChat) return toast('Esta conversa já não está disponível.'); closeSheet(); chatSheet(post || { id: savedChat.roommateId, userId: savedChat.otherUserId, name: savedChat.name || 'Colega', bairro: savedChat.bairro || '', share: 0 }); },
   notifications: () => showNotifications(),
   'notification-reply': t => { const post = store.roommates.find(r => r.id === t.dataset.roommateId); if (!post) return toast('Esta publicação já não está disponível.'); closeSheet(); chatSheet({ ...post, userId: t.dataset.fromUserId, name: 'colega interessado' }); },
 

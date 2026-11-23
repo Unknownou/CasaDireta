@@ -11,7 +11,7 @@ import * as api from './apiService.js';
 import { subscribed, accessStatus } from './utils.js';
 
 const KEY = 'casadireta:client';
-const freshLocal = () => ({ favs: {}, interests: {}, contacts: {}, roommates: [] });
+const freshLocal = () => ({ favs: {}, interests: {}, contacts: {}, roommates: [], chats: [] });
 
 export const store = {
   ready: false,
