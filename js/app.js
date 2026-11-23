@@ -299,15 +299,18 @@ function vPay() {
     </div>`;
   }
   const paid = Array.isArray(u.payments) && u.payments.length > 0;
+  const active = accessStatus(u) === 'SUBSCRIBED_ACTIVE';
+  const freeDays = daysLeft(u.trialEndsAt);
   const lead = locked
     ? (paid ? 'A sua subscrição terminou. Pague 99 MT para continuar a usufruir do CasaDireta.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 99 MT para continuar a usufruir do CasaDireta.')
-    : 'Pague 99 MT e ganhe mais 30 dias de acesso completo ao CasaDireta.';
+    : active ? 'A sua subscrição está ativa. Pode renovar antecipadamente por mais 30 dias.' : `Ainda tem ${freeDays} ${freeDays === 1 ? 'dia' : 'dias'} grátis de uso completo.`;
   const perks = ['Feed de casas, detalhes e contacto direto com proprietários', 'Publicar anúncios com fotos do exterior e do interior', 'Sem taxas de visita nem intermediários'];
-  return `${locked ? `<div class="h-4"></div>` : top('Subscrição de 99 MT')}
+  return `${top('Subscrição de 99 MT')}
   <div class="p-5 ${locked ? 'pt-3' : ''}">
     <div class="rounded-3xl bg-gradient-to-br from-brand to-ink text-white p-5">
       <p class="text-[11px] font-bold tracking-wider text-amber-400 uppercase">${locked ? (paid ? 'Subscrição terminada' : 'Fim do período grátis') : 'Subscrição CasaDireta'}</p>
       <h1 class="mt-1 text-[18px] leading-snug font-extrabold">${lead}</h1>
+      ${!locked && !active ? `<p class="mt-2 text-sm text-emerald-100">Se quiser, pode pagar agora antecipadamente e receber mais 30 dias de subscrição, mantendo os dias grátis restantes.</p>` : ''}
       <div class="mt-4 flex items-end gap-2"><span class="text-4xl font-extrabold">${PRICE} MT</span><span class="text-sm text-emerald-100 pb-1.5">pagamento único · 30 dias</span></div>
       <ul class="mt-4 space-y-2 text-sm">${perks.map(x => `<li class="flex gap-2 items-start">${ic('circle-check', 'w-5 h-5 text-amber-400 shrink-0')}<span>${x}</span></li>`).join('')}</ul>
     </div>
