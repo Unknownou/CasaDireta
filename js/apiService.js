@@ -182,7 +182,18 @@ export const listRoommates = () => call(() => [], () => request('GET', '/paysuit
 export const createRoommatePost = data => call(() => data, () => request('POST', '/paysuite-webhook?action=casadireta-roommates', { baseUrl: PAYMENT_API_BASE_URL, body: data }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const deleteRoommatePost = id => call(() => ({ ok: true }), () => request('DELETE', `/paysuite-webhook?action=casadireta-roommate-delete&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const createProperty = data => call(() => mock.createProperty(data), async () => request('POST', '/paysuite-webhook?action=casadireta-properties', { baseUrl: PAYMENT_API_BASE_URL, form: await propertyFormData(data) }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
-export const updateProperty = (id, patch) => call(() => mock.updateProperty(id, patch), () => request('PATCH', `/paysuite-webhook?action=casadireta-property-update&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL, body: patch }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
+export const updateProperty = (id, patch) => call(
+  () => mock.updateProperty(id, patch),
+  async () => {
+    const hasPhotos = Array.isArray(patch.ext) || Array.isArray(patch.int);
+    return request('PATCH', `/paysuite-webhook?action=casadireta-property-update&id=${encodeURIComponent(id)}`, {
+      baseUrl: PAYMENT_API_BASE_URL,
+      ...(hasPhotos ? { form: await propertyFormData(patch) } : { body: patch })
+    });
+  },
+  PAYMENT_API_BASE_URL,
+  TUPC_AUTH_MODE
+);
 export const trackProperty = (id, event) => call(() => mock.trackProperty(id, event), () => request('POST', `/paysuite-webhook?action=casadireta-property-track&id=${encodeURIComponent(id)}`, { baseUrl: PAYMENT_API_BASE_URL, body: { event } }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
 export const reportProperty = p => call(() => mock.reportProperty(p), () => Promise.resolve({ ok: true }), TUPC_REST_BASE_URL, TUPC_AUTH_MODE);
 export const listChatMessages = conversationId => call(() => mock.listChatMessages({ conversationId }), () => request('GET', `/paysuite-webhook?action=casadireta-messages&id=${encodeURIComponent(conversationId)}`, { baseUrl: PAYMENT_API_BASE_URL }), PAYMENT_API_BASE_URL, TUPC_AUTH_MODE);
