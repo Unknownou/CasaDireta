@@ -308,8 +308,7 @@ function vPay() {
     <h2 class="mt-6 font-extrabold">Carteira móvel</h2>
     <div class="mt-2 rounded-xl border-2 border-brand bg-emerald-50 p-3.5 flex items-center gap-3" aria-live="polite">
       <span class="w-10 h-10 rounded-full grid place-items-center ${m.c}">${ic('smartphone')}</span><div><b id="payOperatorName" class="block">${m.name}</b><span id="payOperatorHint" class="text-xs text-slate-600">${m.op} · detetada automaticamente pelo prefixo ${m.pre.join(' / ')}</span></div></div>
-    <label class="block mt-4 text-sm font-bold" for="payPhone">Número de telemóvel</label>
-    <div class="mt-1.5">${phoneField('payPhone', p.phone)}</div>${err('payPhone')}
+    <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm"><span class="font-bold">Número para pagamento:</span> ${fmtPhone(p.phone)}<br><span class="text-xs text-slate-600">A operadora é detetada automaticamente pelo prefixo do seu número.</span></div>
     <div class="mt-3">${primaryBtn(`Pagar ${PRICE} MT${locked ? ' e Continuar' : ' Agora'}`, 'pay')}</div>
     <p class="mt-3 text-[11px] text-center text-slate-500">O pagamento é processado de forma segura pela operadora detetada e pelo PaySuite.</p>
     ${locked ? `<div class="mt-5 text-center"><button data-act="logout" class="text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button></div>` : ''}
@@ -317,11 +316,11 @@ function vPay() {
 }
 async function startPay() {
   const p = ui.pay;
-  const ph = digits($('#payPhone').value);
+  const ph = digits(me().phone || p.phone);
   clearErrs();
-  if (!validPhone(ph)) return setErr('payPhone', 'Número inválido (82–87 + 7 dígitos).');
+  if (!validPhone(ph)) return payFailed(p.token, 'O número da conta não é válido para pagamentos móveis. Atualize o seu perfil.');
   const detected = methodForPhone(ph);
-  if (!detected) return setErr('payPhone', 'Não foi possível identificar a operadora. Use um número 84, 85, 86 ou 87.');
+  if (!detected) return payFailed(p.token, 'Não foi possível identificar a operadora do número da conta.');
   p.method = detected;
   if (p.status === 'processing') return;
   p.phone = ph; p.status = 'processing'; p.token = uid(); p.error = '';
@@ -329,6 +328,7 @@ async function startPay() {
   const r = await api.createSubscription({ phone: ph, role: me().mode, idempotencyKey: tk });
   if (!ui.pay || ui.pay.token !== tk) return;
   if (!r.ok) return payFailed(tk, r.error.message);
+  if (r.data.checkout_url) { window.location.assign(r.data.checkout_url); return; }
   p.paymentId = r.data.paymentId;
   pollPayment(tk);
 }

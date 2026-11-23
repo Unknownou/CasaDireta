@@ -162,7 +162,7 @@ export const createSubscription = ({ phone, role, idempotencyKey }) => call(
   () => mock.createSubscription35MT({ phone, role }),
   () => request('POST', '/paysuite-webhook?action=create-subscription', {
     baseUrl: PAYMENT_API_BASE_URL,
-    body: { phone, role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
+    body: { role, app_code: APP_CODE, plan_id: SUBSCRIPTION_PLAN_ID },
     headers: { 'Idempotency-Key': idempotencyKey || crypto.randomUUID() }
   }), PAYMENT_API_BASE_URL, REAL_PAYMENT_MODE
 );
