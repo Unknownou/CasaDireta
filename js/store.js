@@ -64,7 +64,10 @@ export function endSession() {
   api.setAuthToken(null); persist(); emit();
 }
 async function enterMain() {
-  await refreshSubscription();
+  await Promise.race([
+    refreshSubscription(),
+    new Promise(resolve => setTimeout(resolve, 3500))
+  ]);
   // Dados secundários não podem bloquear o primeiro render da aplicação.
   // Carregam em segundo plano para evitar spinner infinito quando uma API está lenta.
   if (hasAccess()) {
