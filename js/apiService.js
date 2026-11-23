@@ -90,14 +90,22 @@ async function call(mockFn, realFn, validationBaseUrl = API_BASE_URL, forceReal 
 async function tupcRequest(method, path, options = {}) {
   return request(method, path, { ...options, baseUrl: TUPC_REST_BASE_URL, headers: { apikey: SUPABASE_PUBLISHABLE_KEY, 'Accept-Profile': 'casadireta', 'Content-Profile': 'casadireta', Prefer: 'return=representation', ...(options.headers || {}) } });
 }
+// Os links assinados duram 1 hora. Reutilizá-los evita que cada sincronização
+// dos imóveis force o browser/Android a descarregar novamente a mesma capa.
+const signedPhotoCache = new Map();
 function mapProperty(row, signed = {}) {
   return { id: row.id, type: row.type, rooms: row.rooms, bairro: row.bairro, ref: row.reference_text, price: row.price_mzn, am: Array.isArray(row.amenities) ? row.amenities : [], owner: row.owner_name || 'Proprietário', phone: row.owner_phone || '', ownerId: row.owner_user_id, title: `${TYPES[row.type] || row.type || 'Imóvel'} · ${row.bairro || 'Zona não definida'}`, adv: row.advance_terms, desc: row.description, rules: Array.isArray(row.rules) ? row.rules : [], ext: (row.exterior_paths || []).map((p) => signed[p] || p), int: (row.interior_paths || []).map((p) => signed[p] || p), rented: row.rented, verified: row.verified, views: row.views || 0, wa: row.contacts || 0, created: Date.parse(row.created_at) };
 }
 async function signedObject(path) {
+  const cached = signedPhotoCache.get(path);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
   try {
     const res = await fetchWithTimeout(`https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1/object/sign/casadireta-properties/${path}`, { method: 'POST', headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
     const data = await res.json();
-    return res.ok && data?.signedURL ? `https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1${data.signedURL}` : null;
+    if (!res.ok || !data?.signedURL) return null;
+    const url = `https://tpmsgvkdjzoidvyiwwfk.supabase.co/storage/v1${data.signedURL}`;
+    signedPhotoCache.set(path, { url, expiresAt: Date.now() + 3_540_000 });
+    return url;
   } catch { return null; }
 }
 async function signedMap(rows) {
