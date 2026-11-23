@@ -24,6 +24,7 @@ const once = (k, ms = 800) => { if (busy[k]) return false; busy[k] = 1; setTimeo
 /* AUTH · OTP · SUBSCRIPTION_PAYWALL · APP_MAIN  — calculado SEMPRE a partir do estado guardado */
 
 const view = $('#view'), chrome = $('#chrome'), sheet = $('#sheet'), toastEl = $('#toast');
+const syncStamp = value => JSON.stringify((value || []).map(x => ({ id: x.id, updated: x.updated || x.updated_at, created: x.created || x.created_at, price: x.price || x.price_mzn, rented: x.rented, views: x.views, count: (x.ext || x.exterior_paths || []).length + (x.int || x.interior_paths || []).length })));
 const AUTH_ROUTES = ['welcome', 'login', 'register', 'forgot', 'reset'];
 const NAVR = ['home', 'roommates', 'favorites', 'profile', 'owner'];
 const TENANT_R = ['home', 'roommates', 'favorites'];
@@ -1157,8 +1158,13 @@ init().then(() => {
   // o canal realtime estiver indisponível ou o browser perder a ligação.
   setInterval(async () => {
     if (!store.user || currentScreen() !== 'APP_MAIN' || !navigator.onLine) return;
+    const propertiesBefore = syncStamp(store.properties);
+    const roommatesBefore = syncStamp(store.roommates);
     await Promise.allSettled([refreshProperties(), refreshRoommates()]);
-    if (['home', 'roommates', 'owner'].includes(parse().r)) render();
+    // Não reconstruir o DOM se nada mudou: recriar as tags <img> fazia a
+    // capa piscar e voltar a descarregar no Tecno a cada sincronização.
+    const changed = propertiesBefore !== syncStamp(store.properties) || roommatesBefore !== syncStamp(store.roommates);
+    if (changed && ['home', 'roommates', 'owner'].includes(parse().r)) render();
   }, 10000);
 });
 window.__casadireta = { store, currentScreen, api };
