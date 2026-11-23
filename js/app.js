@@ -292,7 +292,7 @@ function vPay() {
       ${locked ? `<button data-act="logout" class="mt-5 text-xs font-semibold text-slate-400 underline">Sair da conta / Trocar número</button>` : ''}
     </div>`;
   }
-  const paid = u.payments.length > 0;
+  const paid = Array.isArray(u.payments) && u.payments.length > 0;
   const lead = locked
     ? (paid ? 'A sua subscrição terminou. Pague 99 MT para continuar a usufruir do CasaDireta.' : 'Os seus 15 dias grátis terminaram. Por favor, pague a subscrição de 99 MT para continuar a usufruir do CasaDireta.')
     : 'Pague 99 MT e ganhe mais 30 dias de acesso completo ao CasaDireta.';
