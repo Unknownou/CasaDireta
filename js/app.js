@@ -269,7 +269,10 @@ function vPay() {
   const u = me();
   const locked = currentScreen() === 'SUBSCRIPTION_PAYWALL';
   if (!ui.pay) ui.pay = { method: methodForPhone(u.phone) || 'mpesa', phone: u.phone, status: 'idle', token: null, error: '' };
-  const p = ui.pay, m = METHODS[p.method];
+  const p = ui.pay;
+  const methodKey = METHODS[p.method] ? p.method : (methodForPhone(p.phone) || methodForPhone(u.phone) || 'mpesa');
+  p.method = methodKey;
+  const m = METHODS[methodKey];
   if (p.status === 'processing') {
     return `<div class="p-6 text-center">
       <div class="spinner mx-auto mt-16"></div>
