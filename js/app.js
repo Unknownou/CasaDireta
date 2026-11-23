@@ -114,7 +114,8 @@ function openSheet(title, body) {
     <div class="flex items-center justify-between mb-3"><h2 class="font-extrabold text-lg">${title}</h2><button data-act="close" class="w-9 h-9 grid place-items-center rounded-full bg-slate-100" aria-label="Fechar">${ic('x')}</button></div>${body}</div></div>`;
   icons();
 }
-function closeSheet() { sheet.innerHTML = ''; }
+let liveChatTimer = 0;
+function closeSheet() { if (liveChatTimer) { clearInterval(liveChatTimer); liveChatTimer = 0; } sheet.innerHTML = ''; }
 function setErr(id, msg) {
   const e = $('#e-' + id); if (e) e.textContent = msg || '';
   const w = $('#w-' + id) || $('#' + id); if (w) w.classList.toggle('field-err', !!msg);
@@ -558,6 +559,14 @@ async function chatSheet(r) {
     <p class="mt-2 text-[11px] text-slate-500">As mensagens ficam associadas a esta conversa.</p>`);
   const send = document.querySelector('[data-act="chat-send"]');
   if (send) send.dataset.conversationId = conversationId;
+  liveChatTimer = setInterval(async () => {
+    const box = $('#chat');
+    if (!box || !document.querySelector('[data-act="chat-send"]')) return;
+    const fresh = await api.listChatMessages(conversationId);
+    if (!fresh.ok) return;
+    const html = fresh.data.map(m => `<div class="${m.fromUserId === u.id ? 'ml-auto bg-brand text-white rounded-br-sm' : 'bg-slate-100 rounded-bl-sm'} max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm">${esc(m.text)}</div>`).join('');
+    if (box.innerHTML !== html) { const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 32; box.innerHTML = html || '<div class="text-sm text-slate-500">Ainda não há mensagens.</div>'; if (wasBottom) box.scrollTop = box.scrollHeight; }
+  }, 2500);
 }
 
 /* ───────────── Favoritos ───────────── */
@@ -1128,6 +1137,14 @@ init().then(() => {
     await refreshNotifications();
     const after = (store.notifications || []).map(n => n.id).join(',');
     if (before !== after) { render(); if (after && before) toast('Tem notificações novas.'); }
-  }, 30000);
+  }, 5000);
+  // Sincronização viva para todos os perfis: novas casas e publicações aparecem
+  // sem refresh manual; as chamadas continuam a funcionar como fallback quando
+  // o canal realtime estiver indisponível ou o browser perder a ligação.
+  setInterval(async () => {
+    if (!store.user || currentScreen() !== 'APP_MAIN' || !navigator.onLine) return;
+    await Promise.allSettled([refreshProperties(), refreshRoommates()]);
+    if (['home', 'roommates', 'owner'].includes(parse().r)) render();
+  }, 10000);
 });
 window.__casadireta = { store, currentScreen, api };
