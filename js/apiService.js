@@ -45,9 +45,10 @@ async function request(method, path, { body, form, query, headers = {}, baseUrl 
   if (query) for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, Array.isArray(v) ? v.join(',') : v);
   const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
+    const supabaseBase = baseUrl.includes('.supabase.co');
     const res = await fetch(url, {
       method, signal: ctrl.signal,
-      headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      headers: { ...(supabaseBase ? { apikey: SUPABASE_PUBLISHABLE_KEY } : {}), ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
       body: form || (body ? JSON.stringify(body) : undefined)
     });
     let json = null; try { json = await res.json(); } catch (e) { /* sem corpo */ }
