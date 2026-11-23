@@ -866,12 +866,25 @@ const A = {
     setUser(r.data); toast(`Modo ${next === 'proprietario' ? 'Proprietário' : 'Inquilino'}`); nav(homeOf(me()));
   },
   'pick-avatar': () => $('#avatarIn') && $('#avatarIn').click(),
-  support: () => openSheet('Ajuda e suporte', `<form data-submit="support" class="space-y-3" novalidate>
-      <p class="text-sm text-slate-600">Fale com a equipa Central. O pedido fica associado ao seu perfil CasaDireta.</p>
-      <div><label class="text-xs font-bold" for="support-subject">Assunto</label><input id="support-subject" class="field mt-1" required value="Ajuda CasaDireta"></div>
-      <div><label class="text-xs font-bold" for="support-body">Mensagem</label><textarea id="support-body" class="field mt-1 min-h-28" required placeholder="Explique o que precisa..."></textarea></div>
-      <p id="e-support" class="text-xs text-red-600 font-semibold min-h-[1rem]" role="alert"></p>
-      <button class="w-full py-3.5 rounded-xl bg-brand text-white font-bold">Enviar pedido</button></form>`),
+  support: async () => {
+    const r = await api.listSupportCases();
+    const cases = r.ok ? (r.data || []) : [];
+    openSheet('Ajuda e suporte', `<div class="space-y-4">
+      <p class="text-sm text-slate-600">Fale com a equipa da Central. O pedido fica associado ao seu perfil CasaDireta e pode receber respostas aqui.</p>
+      <form data-submit="support" class="space-y-3" novalidate>
+        <div><label class="text-xs font-bold" for="support-subject">Assunto</label><input id="support-subject" class="field mt-1" required value="Ajuda CasaDireta"></div>
+        <div><label class="text-xs font-bold" for="support-body">Mensagem</label><textarea id="support-body" class="field mt-1 min-h-28" required placeholder="Explique o que precisa..."></textarea></div>
+        <p id="e-support" class="text-xs text-red-600 font-semibold min-h-[1rem]" role="alert"></p>
+        <button class="w-full py-3.5 rounded-xl bg-brand text-white font-bold">Enviar pedido</button>
+      </form>
+      <div><h3 class="font-extrabold mb-2">Os meus pedidos</h3>${cases.length ? `<div class="divide-y divide-slate-100">${cases.map(c => `<button data-act="support-case" data-id="${esc(c.id)}" class="w-full text-left py-3"><b class="block text-sm">${esc(c.subject)}</b><span class="text-xs text-slate-500">${esc(c.status)} · ${fmtDate(c.updated_at || c.created_at)}</span></button>`).join('')}</div>` : '<p class="text-sm text-slate-500">Ainda não enviou nenhum pedido.</p>'}</div>
+    </div>`);
+  },
+  'support-case': async t => {
+    const r = await api.listSupportMessages(t.dataset.id); if (!r.ok) return toast(r.error.message);
+    const messages = r.data || [];
+    openSheet('Conversa com a Central', `<div class="space-y-3"><div class="space-y-2 max-h-72 overflow-y-auto">${messages.length ? messages.map(m => `<div class="rounded-xl p-3 ${m.author_type === 'staff' ? 'bg-slate-100' : 'bg-emerald-50'}"><p class="text-xs font-bold">${m.author_type === 'staff' ? 'Central DeliGo' : 'Você'}</p><p class="text-sm mt-1 whitespace-pre-wrap">${esc(m.body)}</p><p class="text-[11px] text-slate-400 mt-1">${fmtDate(m.created_at)} ${fmtTime(m.created_at)}</p></div>`).join('') : '<p class="text-sm text-slate-500">Sem mensagens ainda.</p>'}</div><form data-submit="support-reply" data-id="${esc(t.dataset.id)}" class="space-y-2"><textarea id="support-reply-body" class="field min-h-24" placeholder="Escreva uma resposta..."></textarea><button class="w-full py-3 rounded-xl bg-brand text-white font-bold">Enviar resposta</button></form></div>`);
+  },
   'edit-profile': () => {
     const u = me(), prop = u.mode === 'proprietario';
     openSheet('Editar perfil', `<div class="space-y-3">
@@ -986,6 +999,19 @@ function withBusy(btn, label = 'A processar...') {
 const fieldErr = (e, map = {}) => { const id = map[e.code]; if (id) { setErr(id, e.message); focusFirstErr(); } else toast(e.message); };
 
 const H = {
+  async support(form, v) {
+    const subject = v('support-subject').trim(), body = v('support-body').trim(), u = me();
+    if (subject.length < 3) return setErr('support', 'Indique um assunto.');
+    if (body.length < 1) return setErr('support', 'Escreva a mensagem.');
+    const button = form.querySelector('button'), done = withBusy(button);
+    const r = await api.createSupportCase({ requester_user_id: u.id, requester_name: u.name, requester_phone: u.phone, subject, description: body, category: 'general', priority: 'normal' });
+    done(); if (!r.ok) return toast(r.error.message); closeSheet(); toast('Pedido enviado à Central.');
+  },
+  async 'support-reply'(form, v) {
+    const body = v('support-reply-body').trim(); if (!body) return toast('Escreva uma mensagem.');
+    const r = await api.sendSupportMessage(form.dataset.id, { author_user_id: me().id, author_name: me().name, body });
+    if (!r.ok) return toast(r.error.message); closeSheet(); toast('Resposta enviada.');
+  },
   async register(form, v) {
     const name = v('name').trim(), phone = digits(v('phone')), pw = v('pw'), pw2 = v('pw2'), role = (document.querySelector('input[name=role]:checked') || {}).value;
     let ok = true;
