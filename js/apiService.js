@@ -35,7 +35,7 @@
  */
 import { API_BASE_URL, PAYMENT_API_BASE_URL, TUPC_REST_BASE_URL, SUPABASE_PUBLISHABLE_KEY, MOCK_MODE, TUPC_AUTH_MODE, REAL_PAYMENT_MODE, REQUEST_TIMEOUT_MS, APP_CODE, SUBSCRIPTION_PLAN_ID } from './config.js';
 import { mock, setMockToken, devTools } from './mockBackend.js';
-import { PRICES } from './utils.js';
+import { PRICES, TYPES } from './utils.js';
 
 let authToken = null;
 export function setAuthToken(t) { authToken = t; setMockToken(t); }
@@ -84,7 +84,7 @@ async function tupcRequest(method, path, options = {}) {
   return request(method, path, { ...options, baseUrl: TUPC_REST_BASE_URL, headers: { apikey: SUPABASE_PUBLISHABLE_KEY, 'Accept-Profile': 'casadireta', 'Content-Profile': 'casadireta', Prefer: 'return=representation', ...(options.headers || {}) } });
 }
 function mapProperty(row, signed = {}) {
-  return { id: row.id, type: row.type, rooms: row.rooms, bairro: row.bairro, ref: row.reference_text, price: row.price_mzn, am: row.amenities || [], owner: row.owner_name || 'Proprietário', phone: row.owner_phone || '', ownerId: row.owner_user_id, title: `${row.type} · ${row.bairro}`, adv: row.advance_terms, desc: row.description, rules: '', ext: (row.exterior_paths || []).map((p) => signed[p] || p), int: (row.interior_paths || []).map((p) => signed[p] || p), rented: row.rented, verified: row.verified, views: row.views, wa: row.contacts, created: Date.parse(row.created_at) };
+  return { id: row.id, type: row.type, rooms: row.rooms, bairro: row.bairro, ref: row.reference_text, price: row.price_mzn, am: Array.isArray(row.amenities) ? row.amenities : [], owner: row.owner_name || 'Proprietário', phone: row.owner_phone || '', ownerId: row.owner_user_id, title: `${TYPES[row.type] || row.type || 'Imóvel'} · ${row.bairro || 'Zona não definida'}`, adv: row.advance_terms, desc: row.description, rules: Array.isArray(row.rules) ? row.rules : [], ext: (row.exterior_paths || []).map((p) => signed[p] || p), int: (row.interior_paths || []).map((p) => signed[p] || p), rented: row.rented, verified: row.verified, views: row.views || 0, wa: row.contacts || 0, created: Date.parse(row.created_at) };
 }
 async function signedObject(path) {
   try {
