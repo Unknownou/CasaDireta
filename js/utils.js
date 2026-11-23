@@ -22,7 +22,7 @@ export const fmtPhone = p => `+258 ${p.slice(0, 2)} ${p.slice(2, 5)} ${p.slice(5
 export const first = n => String(n || '').trim().split(/\s+/)[0] || '';
 export const initials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 export const uid = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-export const fmtDate = ts => new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Africa/Maputo' });
+export const fmtDate = ts => { const d = new Date(ts); return Number.isNaN(d.getTime()) ? 'Data não disponível' : d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Africa/Maputo' }); };
 export const fmtTime = ts => new Date(ts).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Maputo' });
 export const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 export const roomsTxt = n => (n >= 4 ? '4+ quartos' : n === 1 ? '1 quarto' : `${n} quartos`);
