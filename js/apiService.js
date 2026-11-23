@@ -103,8 +103,11 @@ async function signedMap(rows) {
 function existingStoragePath(x) {
   if (typeof x !== 'string') return null;
   const marker = '/object/sign/casadireta-properties/';
-  if (!x.includes(marker)) return null;
-  return decodeURIComponent(x.split(marker)[1].split('?')[0]);
+  if (x.includes(marker)) return decodeURIComponent(x.split(marker)[1].split('?')[0]);
+  const bucketMarker = 'casadireta-properties/';
+  if (x.includes(bucketMarker) && /^https?:\/\//i.test(x)) return decodeURIComponent(x.split(bucketMarker)[1].split('?')[0]);
+  if (!/^https?:\/\//i.test(x) && !x.startsWith('data:') && !x.startsWith('blob:')) return x;
+  return null;
 }
 async function toBlob(x) { return typeof x === 'string' ? (await fetch(x)).blob() : x; }
 async function propertyFormData(p) {
