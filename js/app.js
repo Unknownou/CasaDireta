@@ -14,7 +14,7 @@ const isFav = (u, id) => (L.favs[u.id] || []).includes(id);
 
 /* Estado de interface (memória) */
 const newFilters = () => ({ q: '', zone: 'all', type: 'all', price: 'all', am: [], sort: 'new' });
-const ui = { f: newFilters(), ft: null, otp: null, pay: null, w: null, receipt: null, mount: null, seen: {}, published: null, del: null };
+const ui = { f: newFilters(), ft: null, otp: null, pay: null, w: null, receipt: null, mount: null, seen: {}, published: null, del: null, returnPayment: null };
 let timers = [];
 const setPath = (o, p, v) => { const k = p.split('.'); let c = o; while (k.length > 1) c = c[k.shift()]; c[k[0]] = v; };
 const busy = {};
@@ -29,7 +29,7 @@ const NAVR = ['home', 'roommates', 'favorites', 'profile', 'owner'];
 const TENANT_R = ['home', 'roommates', 'favorites'];
 const OWNER_R = ['owner', 'publish'];
 
-const parse = () => { const [r, ...p] = location.hash.replace(/^#\/?/, '').split('/'); return { r: r || '', p }; };
+const parse = () => { const [path, query = ''] = location.hash.replace(/^#\/?/, '').split('?'); const [r, ...p] = path.split('/'); return { r: r || '', p, q: new URLSearchParams(query) }; };
 const nav = to => { if (location.hash === '#/' + to) render(); else location.hash = '#/' + to; };
 const redirect = to => { if (location.hash === '#/' + to) render(); else location.replace('#/' + to); };
 
@@ -37,7 +37,7 @@ function render() {
   if (!store.ready) return;
   timers.forEach(clearInterval); timers = [];
   closeSheet();
-  const { r, p } = parse(), u = me(), sc = currentScreen();
+  const { r, p, q } = parse(), u = me(), sc = currentScreen();
   const V = { welcome: vWelcome, register: vRegister, otp: vOtp, login: vLogin, forgot: vForgot, reset: vReset, home: vHome, listing: vListing, roommates: vRoommates, favorites: vFavorites, profile: vProfile, owner: vOwner, publish: vPublish, pay: vPay, receipt: vReceipt, published: vPublished };
 
   /* Route Guard: cada estado só deixa ver as suas telas */
@@ -64,6 +64,12 @@ function render() {
   renderChrome(r, sc === 'APP_MAIN' ? u : null);
   icons();
   if (ui.mount) { ui.mount(); ui.mount = null; }
+  const returnedPayment = q.get('payment');
+  if (r === 'pay' && returnedPayment && returnedPayment !== ui.returnPayment && u) {
+    ui.returnPayment = returnedPayment;
+    ui.pay = { method: methodForPhone(u.phone) || 'mpesa', phone: localAccountPhone(u.phone), status: 'processing', token: uid(), paymentId: returnedPayment, error: '' };
+    void pollPayment(ui.pay.token);
+  }
 }
 
 function renderChrome(r, u) {
@@ -337,8 +343,8 @@ async function pollPayment(tk) {
     const p = ui.pay; if (!p || p.token !== tk || p.status !== 'processing') return;
     const r = await api.getPaymentStatus(p.paymentId);
     if (!r.ok) { if (r.error.code === 'network' || r.error.code === 'timeout') continue; return payFailed(tk, r.error.message); }
-    if (r.data.status === 'paid') return finishPay(tk, r.data);
-    if (r.data.status === 'failed') return payFailed(tk, r.data.message || 'Pagamento não confirmado. Tente novamente.');
+    if (['paid', 'settled', 'completed', 'active', 'SUBSCRIBED_ACTIVE'].includes(String(r.data.status))) return finishPay(tk, r.data);
+    if (['failed', 'cancelled', 'canceled'].includes(String(r.data.status))) return payFailed(tk, r.data.message || 'Pagamento não confirmado. Tente novamente.');
   }
   payFailed(tk, 'Não recebemos a confirmação a tempo. Se o valor foi debitado, aguarde alguns minutos e tente de novo.');
 }
@@ -346,7 +352,8 @@ async function finishPay(tk, d) {
   if (!ui.pay || ui.pay.token !== tk) return;
   await refreshSubscription();
   await refreshProperties();
-  ui.receipt = { amount: d.amount, method: METHODS[d.method].name, phone: d.phone, ref: d.reference, date: d.paidAt, until: d.validUntil };
+  const p = ui.pay, method = d.method || p.method || 'mpesa';
+  ui.receipt = { amount: d.amount || (d.amount_minor ? d.amount_minor / 100 : PRICE), method: METHODS[method]?.name || method, phone: d.phone || p.phone, ref: d.reference || d.provider_reference || d.paymentId || p.paymentId, date: d.paidAt || d.paid_at || Date.now(), until: d.validUntil || d.period_ends_at || d.subscribedUntil || Date.now() + 30 * DAY };
   ui.pay = null;
   nav('receipt');
 }
