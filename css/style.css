@@ -29,7 +29,8 @@ body {
     box-shadow: 0 25px 60px -15px rgba(15, 23, 42, .45);
   }
 }
-#view { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+#view { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 4rem; }
+#view > header { position: sticky; top: 0; z-index: 30; }
 #chrome { flex-shrink: 0; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

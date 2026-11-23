@@ -650,9 +650,9 @@ function vPublish() {
   if (!ui.w) ui.w = newDraft(u);
   const w = ui.w;
   const pickChip = (group, val, label, on) => `<button type="button" data-act="pick" data-group="${group}" data-val="${val}" class="chip" aria-pressed="${on}">${label}</button>`;
-  const photoBlock = (kind, label) => `<div><div class="flex items-center justify-between"><span class="text-sm font-bold">${label}</span><span class="text-xs text-slate-500" id="pcount-${kind}">${w[kind].length}/5</span></div>
-      <div id="grid-${kind}" class="mt-2 grid grid-cols-3 gap-2"></div>
-      <div class="mt-2"><label class="block text-center py-2.5 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer">${ic('image-plus', 'w-4 h-4 inline -mt-0.5')} Adicionar fotos<input type="file" accept="image/*" multiple data-kind="${kind}" class="photo-in sr-only"></label>${err('ph-' + kind)}</div>`;
+  const photoBlock = (kind, label) => `<div class="min-w-0"><div class="flex items-start gap-3 justify-between"><span class="text-sm font-bold leading-5">${label}</span><span class="shrink-0 text-xs text-slate-500" id="pcount-${kind}">${w[kind].length}/5</span></div>
+      <div id="grid-${kind}" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+      <div class="mt-2"><label class="w-full min-h-12 inline-flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 border-dashed border-brand text-brand text-sm font-bold cursor-pointer hover:bg-emerald-50 active:bg-emerald-100">${ic('image-plus', 'w-5 h-5 shrink-0')}<span>Adicionar fotos</span><input type="file" accept="image/*" multiple data-kind="${kind}" class="photo-in sr-only"></label>${err('ph-' + kind)}</div>`;
   ui.mount = () => { drawPhotos('ext'); drawPhotos('int'); };
   return `${top('Publicar Nova Casa', true)}
   <div class="w-full max-w-2xl mx-auto p-4 sm:p-5 space-y-5 pb-28">
