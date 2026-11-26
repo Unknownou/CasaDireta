@@ -12,7 +12,7 @@ export const TUPC_BASE_URL = '';
 export const APP_CODE = 'casadireta';
 export const SUBSCRIPTION_PLAN_ID = 'casadireta_monthly_99_mzn';
 export const LEGAL_TERMS_URL = 'https://www.deligotriunfal.site/termos';
-export const PRIVACY_POLICY_URL = 'https://casadireta-flame.vercel.app/privacidade';
+export const PRIVACY_POLICY_URL = 'https://casadireta-central-deligotriunfal.vercel.app/privacidade';
 // Deliberately empty until Central/TUPC publishes CasaDireta's web-push key.
 // A guessed or reused VAPID key would register devices in the wrong tenant.
 export const PUSH_VAPID_PUBLIC_KEY = '';
